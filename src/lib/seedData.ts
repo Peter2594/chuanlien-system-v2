@@ -51,11 +51,43 @@ const seasonTopics = (date: Date) => {
   if (m <= 9) return ["Q3", "暑期會議", "結算"];
   return ["Q4", "年底結算", "明年規劃"];
 };
+// 真實企業 portfolio (池井戶潤宇宙) - 涵蓋金融、製造、IT、飯店、航空等產業
 const caseRegistry = [
-  { code: "A 新創" }, { code: "B 公司" }, { code: "C 標的" }, { code: "D 客戶" },
-  { code: "E 標的" }, { code: "F 標的" }, { code: "G 公司" }, { code: "H 案件" },
-  { code: "I 標的" }, { code: "J 案件" }, { code: "K 公司" }, { code: "L 標的" },
-  { code: "M 平台" }, { code: "N 公司" }, { code: "P 公司" }, { code: "R 公司" },
+  // 銀行 / 金融
+  { code: "東京中央銀行", industry: "金融" },
+  { code: "白水銀行",     industry: "金融" },
+  { code: "大東京銀行",   industry: "金融" },
+  { code: "關西城市銀行", industry: "金融" },
+  { code: "東京首都銀行", industry: "金融" },
+  { code: "開發投資銀行", industry: "金融" },
+  { code: "內海信用金庫", industry: "金融" },
+  { code: "東京中央證券", industry: "證券" },
+  { code: "太洋證券",     industry: "證券" },
+
+  // 製造 / 工業
+  { code: "西大阪鋼鐵",   industry: "鋼鐵" },
+  { code: "淡路鋼材",     industry: "鋼鐵" },
+  { code: "田宮電機",     industry: "電機" },
+  { code: "駒田工業",     industry: "工業" },
+  { code: "竹下金屬",     industry: "金屬" },
+  { code: "牧野精機",     industry: "精密機械" },
+
+  // IT / 科技
+  { code: "電腦雜技集團", industry: "IT" },
+  { code: "斯派拉爾",     industry: "IT" },
+  { code: "電腦電設",     industry: "IT" },
+  { code: "Skyhope",     industry: "科技" },
+  { code: "Fox",         industry: "科技" },
+
+  // 飯店 / 服務
+  { code: "伊勢島飯店",         industry: "飯店" },
+  { code: "伊勢志摩 State",     industry: "飯店" },
+  { code: "福斯特連鎖酒店集團", industry: "飯店" },
+
+  // 航空 / 建設 / 商業
+  { code: "帝國航空", industry: "航空" },
+  { code: "小村建設", industry: "建設" },
+  { code: "丸岡商工", industry: "商業" },
 ];
 const blockerPool: Record<string, string[]> = {
   research: ["財務資料延遲", "法律意見書未到", "競品數據缺漏", "估值假設待管理層拍板", "盡調訪談排程困難"],
@@ -347,6 +379,7 @@ const HISTORY_DAYS_BY_CATEGORY: Record<string, number[]> = {
   "時程/聯繫":   [1, 2, 3, 4, 5, 7, 10, 17],
 };
 
+// 每筆歷史案件搭配真實企業，標題以「{公司} {動作}」呈現
 const HISTORY_TITLES_BY_CATEGORY: Record<string, string[]> = {
   "法遵/合約":   ["NDA 條款審閱", "投資契約審核", "法務意見回覆", "監管風險評估"],
   "資金/募資":   ["募資規模確認", "資金配置試算", "預算追加評估"],
@@ -354,6 +387,16 @@ const HISTORY_TITLES_BY_CATEGORY: Record<string, string[]> = {
   "跨部門/窗口": ["對接窗口確認", "部門資訊同步", "外部單位聯繫"],
   "決策/簽核":   ["投資委員會決議", "條件書簽核", "董事會拍板", "追加投資核准"],
   "時程/聯繫":   ["財務長行程安排", "會議排程確認", "外部窗口催促"],
+};
+
+// 各類別對應的合適企業 (依產業匹配)
+const HISTORY_COMPANIES_BY_CATEGORY: Record<string, string[]> = {
+  "法遵/合約":   ["東京中央銀行", "白水銀行", "東京中央證券", "太洋證券", "開發投資銀行"],
+  "資金/募資":   ["伊勢島飯店", "帝國航空", "西大阪鋼鐵", "小村建設", "福斯特連鎖酒店集團"],
+  "資料/補件":   ["田宮電機", "牧野精機", "竹下金屬", "駒田工業", "淡路鋼材"],
+  "跨部門/窗口": ["電腦雜技集團", "斯派拉爾", "電腦電設", "Skyhope", "Fox"],
+  "決策/簽核":   ["大東京銀行", "關西城市銀行", "東京首都銀行", "內海信用金庫"],
+  "時程/聯繫":   ["伊勢志摩 State", "丸岡商工", "伊勢島飯店", "帝國航空"],
 };
 
 const HISTORY_DEPTS = ["投資研究部", "業務開發部", "資產管理部"];
@@ -371,37 +414,40 @@ export const SEED_HISTORY: HistoryCase[] = (() => {
   const out: HistoryCase[] = [];
   let bhId = 1;
   Object.entries(HISTORY_DAYS_BY_CATEGORY).forEach(([catLabel, daysList]) => {
-    const titles = HISTORY_TITLES_BY_CATEGORY[catLabel] || [];
+    const actions = HISTORY_TITLES_BY_CATEGORY[catLabel] || [];
+    const companies = HISTORY_COMPANIES_BY_CATEGORY[catLabel] || ["未指定企業"];
     const insights = CATEGORY_INSIGHTS[catLabel] || [];
     daysList.forEach((days, i) => {
       const weeksAgo = Math.max(1, 42 - (18 + i));
       const cd = new Date(NOW);
       cd.setDate(cd.getDate() - weeksAgo * 7);
       const dept = HISTORY_DEPTS[i % HISTORY_DEPTS.length];
-      const title = titles[i % titles.length] || `${catLabel} 案件`;
+      const company = companies[i % companies.length];
+      const action = actions[i % actions.length] || catLabel;
+      const title = `${company}．${action}`;
       const speed = days <= 3 ? "快速解決" : days <= 7 ? "正常解決" : days <= 14 ? "較慢解決" : "嚴重延誤";
       out.push({
         id: `bh${bhId++}`,
         title,
         date: `${cd.getFullYear()}/${String(cd.getMonth() + 1).padStart(2, "0")}/${String(cd.getDate()).padStart(2, "0")}`,
-        tags: [catLabel, dept, speed],
-        summary: `${dept}處理的${catLabel}類卡點，歷時 ${days} 天完成解決。`,
+        tags: [catLabel, company, dept, speed],
+        summary: `針對 ${company} 的「${action}」案件，由 ${dept} 處理，歷時 ${days} 天完成。`,
         owner: dept,
         handoffs: 1 + (i % 3),
         outcome: `已解決 · ${days} 天`,
         detail: {
-          background: `本卡點屬於「${catLabel}」類別，發生於約 ${weeksAgo} 週前，由 ${dept} 主責處理。`,
-          process: `共歷時 ${days} 天完成解決，期間涉及 ${1 + (i % 3)} 次跨部門協作。`,
+          background: `客戶 ${company} 的「${action}」案件屬於「${catLabel}」類別，發生於約 ${weeksAgo} 週前，由 ${dept} 主責處理。`,
+          process: `共歷時 ${days} 天完成解決，期間涉及 ${1 + (i % 3)} 次跨部門協作。主要對接窗口為該公司財務/法務部門。`,
           valuation: `解決時間：${days} 天`,
           keyInsights: insights,
           result: days <= 5
-            ? "已成功解決，解決速度優於同類歷史中位數，可作為快速處理的參考案例。"
+            ? `${company} 案件成功解決，解決速度優於同類歷史中位數，可作為快速處理的參考案例。`
             : days <= 14
-            ? "已成功解決，解決時間在正常範圍內。"
-            : "已成功解決，但解決時間偏長，建議檢討流程以避免類似延誤。",
+            ? `${company} 案件已成功解決，解決時間在正常範圍內。`
+            : `${company} 案件已成功解決，但解決時間偏長，建議檢討流程以避免類似延誤。`,
           lessons: days > 10
-            ? `本案處理時間較長（${days} 天），建議下次同類卡點在第 ${Math.ceil(days * 0.6)} 天時即升級處理層級。`
-            : "本案處理效率良好，相關處理模式值得在團隊內部分享。",
+            ? `${company} 一案處理時間較長（${days} 天），建議下次與該客戶溝通類似議題時提前 ${Math.ceil(days * 0.4)} 天啟動。`
+            : `${company} 處理效率良好，建立的對接流程值得作為其他類似客戶的範本。`,
         },
       });
     });
