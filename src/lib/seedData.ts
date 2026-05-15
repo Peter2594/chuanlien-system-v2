@@ -157,16 +157,25 @@ export const SEED_REPORTS: Report[] = buildReports();
 // ===== 程序化產生交接單 =====
 function buildHandoffs(): Handoff[] {
   const out: Handoff[] = [];
-  const deptPairs = [
-    { from: "業務開發部", to: "投資研究部", sender: "林聿平", receiver: "周世倫" },
-    { from: "業務開發部", to: "投資研究部", sender: "林欣逸", receiver: "鍾皓明" },
-    { from: "業務開發部", to: "資產管理部", sender: "林聿平", receiver: "梁嘉芫" },
-    { from: "業務開發部", to: "資產管理部", sender: "蔡明遠", receiver: "陳雅文" },
-    { from: "投資研究部", to: "業務開發部", sender: "周世倫", receiver: "林聿平" },
-    { from: "投資研究部", to: "業務開發部", sender: "鍾皓明", receiver: "林欣逸" },
-    { from: "投資研究部", to: "資產管理部", sender: "周世倫", receiver: "梁嘉芫" },
-    { from: "資產管理部", to: "投資研究部", sender: "梁嘉芫", receiver: "周世倫" },
-    { from: "資產管理部", to: "業務開發部", sender: "陳雅文", receiver: "蔡明遠" },
+  // 各部門員工池 - 配對更多樣
+  const researchers = ["周世倫", "鍾皓明", "張偉", "李宥廷", "謝佳穎", "王子翔", "廖宜萱"];
+  const bizDev      = ["林聿平", "林欣逸", "蔡明遠", "楊雅雯", "羅宇晴", "陳俊宏"];
+  const assetMgrs   = ["梁嘉芫", "陳雅文", "蘇柏豪", "邱筱慧"];
+
+  // 動態產生多樣的配對（每次隨機抽不同的人）
+  const buildPair = (fromDept: string, toDept: string, fromPool: string[], toPool: string[], rnd: () => number) => ({
+    from: fromDept,
+    to: toDept,
+    sender: fromPool[Math.floor(rnd() * fromPool.length)],
+    receiver: toPool[Math.floor(rnd() * toPool.length)],
+  });
+  const allPairCombos: [string, string, string[], string[]][] = [
+    ["業務開發部", "投資研究部", bizDev,      researchers],
+    ["業務開發部", "資產管理部", bizDev,      assetMgrs],
+    ["投資研究部", "業務開發部", researchers, bizDev],
+    ["投資研究部", "資產管理部", researchers, assetMgrs],
+    ["資產管理部", "投資研究部", assetMgrs,   researchers],
+    ["資產管理部", "業務開發部", assetMgrs,   bizDev],
   ];
   const caseTypes = [
     { code: "A 新創", actions: ["盡職調查委託", "財報補件追蹤", "估值區間確認"] },
@@ -192,7 +201,8 @@ function buildHandoffs(): Handoff[] {
     const rnd = seedRandom(weeksAgo * 211 + 17);
     const num = rnd() > 0.35 ? 2 : 1;
     for (let i = 0; i < num; i++) {
-      const pair = pick(deptPairs, rnd);
+      const combo = pick(allPairCombos, rnd);
+      const pair = buildPair(combo[0], combo[1], combo[2], combo[3], rnd);
       const c = pick(caseTypes, rnd);
       const action = pick(c.actions, rnd);
       const status = pick(statuses, rnd);

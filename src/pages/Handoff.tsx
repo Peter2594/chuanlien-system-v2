@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { ArrowLeftRight, Plus, Check, Trash2, Clock } from "lucide-react";
-import { motion } from "motion/react";
+import * as React from "react";
+import { useState, useMemo } from "react";
+import { Plus, Check, Trash2, Clock, X } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
@@ -15,14 +16,25 @@ interface Props {
   departments: { name: string; active: boolean }[];
 }
 
+type Filter = null | "待簽收" | "已簽收";
 const today = () => NOW.toISOString().slice(0, 10);
 
 export default function HandoffPage({ handoffs, setHandoffs, departments }: Props) {
   const [viewing, setViewing] = useState<Handoff | null>(null);
   const [creating, setCreating] = useState(false);
+  const [filter, setFilter] = useState<Filter>(null);
 
-  const pending = handoffs.filter((h) => h.status === "待簽收").sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
-  const done    = handoffs.filter((h) => h.status === "已簽收").sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+  const pending = useMemo(() =>
+    handoffs.filter((h) => h.status === "待簽收").sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)),
+  [handoffs]);
+  const done = useMemo(() =>
+    handoffs.filter((h) => h.status === "已簽收").sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)),
+  [handoffs]);
+
+  const filteredHandoffs =
+    filter === "待簽收" ? pending
+    : filter === "已簽收" ? done
+    : null;
 
   const signOff = (id: string) => {
     setHandoffs((prev) => prev.map((h) => h.id === id ? { ...h, status: "已簽收" } : h));
@@ -42,38 +54,75 @@ export default function HandoffPage({ handoffs, setHandoffs, departments }: Prop
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">
             <span className="text-red-500">{pending.length}</span> 件交接待簽收
           </h1>
-          <p className="text-sm text-slate-500 mt-1">跨部門案件交接，接手方需明確簽收。</p>
+          <p className="text-sm text-slate-500 mt-1">點下方卡片查看詳細列表。</p>
         </div>
         <Button variant="primary" icon={<Plus size={14} />} onClick={() => setCreating(true)}>
           新增交接
         </Button>
       </div>
 
-      {/* 待簽收 */}
-      {pending.length > 0 && (
-        <section className="mb-6">
-          <h3 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
-            <Clock size={14} className="text-red-500" />
-            待簽收 <span className="text-slate-400 text-xs">({pending.length})</span>
-          </h3>
-          <div className="space-y-2">
-            {pending.map((h) => <HandoffRow key={h.id} h={h} onClick={() => setViewing(h)} pending />)}
-          </div>
-        </section>
+      {/* 兩大狀態卡 */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <BigStat
+          icon={<Clock size={18} className="text-red-500" />}
+          label="待簽收"
+          count={pending.length}
+          color="red"
+          active={filter === "待簽收"}
+          onClick={() => setFilter(filter === "待簽收" ? null : "待簽收")}
+        />
+        <BigStat
+          icon={<Check size={18} className="text-emerald-500" />}
+          label="已簽收"
+          count={done.length}
+          color="emerald"
+          active={filter === "已簽收"}
+          onClick={() => setFilter(filter === "已簽收" ? null : "已簽收")}
+        />
+      </div>
+
+      {/* 列表 */}
+      <AnimatePresence>
+        {filter && filteredHandoffs && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="space-y-3"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-900">
+                {filter}（{filteredHandoffs.length} 件）
+              </h3>
+              <button onClick={() => setFilter(null)} className="text-xs text-slate-400 hover:text-slate-700 flex items-center gap-1">
+                <X size={14} /> 取消篩選
+              </button>
+            </div>
+            {filteredHandoffs.length === 0 ? (
+              <Card className="p-12 text-center text-slate-400 text-sm">沒有交接單</Card>
+            ) : (
+              <div className="space-y-2">
+                {filteredHandoffs.slice(0, 30).map((h) =>
+                  <HandoffRow key={h.id} h={h} onClick={() => setViewing(h)} pending={filter === "待簽收"} />,
+                )}
+                {filteredHandoffs.length > 30 && (
+                  <div className="text-center text-xs text-slate-400 py-3">顯示前 30 筆，共 {filteredHandoffs.length} 筆</div>
+                )}
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {!filter && (
+        <Card className="p-12 text-center bg-slate-50/50 border-dashed">
+          <div className="text-slate-400 text-sm mb-1">尚未選擇分類</div>
+          <div className="text-slate-400 text-xs">點上方「待簽收」或「已簽收」卡片查看交接單</div>
+        </Card>
       )}
 
-      {/* 已簽收 (最近 10 筆) */}
-      <section>
-        <h3 className="text-sm font-bold text-slate-700 mb-3">
-          已簽收 <span className="text-slate-400 text-xs">(顯示最近 10 筆，共 {done.length})</span>
-        </h3>
-        <div className="space-y-2">
-          {done.slice(0, 10).map((h) => <HandoffRow key={h.id} h={h} onClick={() => setViewing(h)} />)}
-        </div>
-      </section>
-
       {handoffs.length === 0 && (
-        <Card className="p-12 text-center text-slate-400">尚無交接單</Card>
+        <Card className="p-12 text-center text-slate-400 mt-4">尚無交接單</Card>
       )}
 
       {/* 詳情 Modal */}
@@ -130,6 +179,29 @@ export default function HandoffPage({ handoffs, setHandoffs, departments }: Prop
         }}
       />
     </div>
+  );
+}
+
+function BigStat({ icon, label, count, color, active, onClick }: {
+  icon: React.ReactNode; label: string; count: number; color: "red" | "emerald"; active?: boolean; onClick?: () => void;
+}) {
+  const styles = {
+    red:     { border: "border-red-300",     ring: "ring-red-200",     text: "text-red-600" },
+    emerald: { border: "border-emerald-300", ring: "ring-emerald-200", text: "text-emerald-600" },
+  };
+  const s = styles[color];
+  return (
+    <button onClick={onClick}
+      className={cn(
+        "p-8 bg-white rounded-2xl border transition-all text-left min-h-[180px] flex flex-col",
+        active ? `${s.border} ring-2 ${s.ring} shadow-md` : "border-slate-200/60 hover:border-slate-300 hover:shadow-sm",
+      )}>
+      <div className="flex items-center gap-2 mb-4">
+        {icon}
+        <span className="text-sm font-bold text-slate-700">{label}</span>
+      </div>
+      <div className={cn("text-7xl font-black tracking-tighter mt-auto", s.text)}>{count}</div>
+    </button>
   );
 }
 
