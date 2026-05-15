@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
-import { Plus, Check, Trash2 } from "lucide-react";
-import { motion } from "motion/react";
+import { Plus, Check, Trash2, X } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
@@ -18,21 +18,23 @@ interface Props {
 }
 
 const STATUS_STYLE = {
-  逾期:    { bg: "bg-red-50",     text: "text-red-600",     dot: "bg-red-500",     label: "逾期" },
-  執行中:  { bg: "bg-blue-50",    text: "text-blue-600",    dot: "bg-blue-500",    label: "執行中" },
-  已完成:  { bg: "bg-emerald-50", text: "text-emerald-600", dot: "bg-emerald-500", label: "已完成" },
+  逾期:   { bg: "bg-red-50",     text: "text-red-600",     dot: "bg-red-500",     ring: "ring-red-200",     border: "border-red-300",     hex: "#ef4444" },
+  執行中: { bg: "bg-blue-50",    text: "text-blue-600",    dot: "bg-blue-500",    ring: "ring-blue-200",    border: "border-blue-300",    hex: "#3b82f6" },
+  已完成: { bg: "bg-emerald-50", text: "text-emerald-600", dot: "bg-emerald-500", ring: "ring-emerald-200", border: "border-emerald-300", hex: "#10b981" },
 };
 
+type Filter = null | "逾期" | "執行中" | "已完成" | { type: "dept"; name: string };
 const today = () => NOW.toISOString().slice(0, 10);
 
 export default function DecisionsPage({ decisions, setDecisions, departments, userProfile }: Props) {
   const [viewing, setViewing] = useState<Decision | null>(null);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Decision | null>(null);
+  const [filter, setFilter] = useState<Filter>(null);
 
-  const overdue   = decisions.filter((d) => d.status === "逾期");
+  const overdue    = decisions.filter((d) => d.status === "逾期");
   const inProgress = decisions.filter((d) => d.status === "執行中");
-  const done      = decisions.filter((d) => d.status === "已完成");
+  const done       = decisions.filter((d) => d.status === "已完成");
 
   const deptDistribution = useMemo(() => {
     const m: Record<string, number> = {};
@@ -40,13 +42,30 @@ export default function DecisionsPage({ decisions, setDecisions, departments, us
       const short = d.assignedDept.replace("營運與管理層", "管理").replace("投資研究部", "投研").replace("業務開發部", "業開").replace("資產管理部", "資管");
       m[short] = (m[short] || 0) + 1;
     });
-    return Object.entries(m).map(([dept, count]) => ({ dept, count }));
+    return Object.entries(m).map(([dept, count]) => ({ dept, count, fullDept: dept }));
   }, [decisions]);
 
+  // 取得 filter 結果
+  const filteredDecisions =
+    filter === "逾期" ? overdue
+    : filter === "執行中" ? inProgress
+    : filter === "已完成" ? done
+    : filter && typeof filter === "object" && filter.type === "dept"
+      ? decisions.filter((d) => {
+          const short = d.assignedDept.replace("營運與管理層", "管理").replace("投資研究部", "投研").replace("業務開發部", "業開").replace("資產管理部", "資管");
+          return short === filter.name;
+        })
+      : null;
+
+  const filterTitle =
+    filter === "逾期" ? `逾期決策（${overdue.length} 件）·需優先處理`
+    : filter === "執行中" ? `執行中（${inProgress.length} 件）`
+    : filter === "已完成" ? `已完成（${done.length} 件）`
+    : filter && typeof filter === "object" ? `${filter.name} 部門（${filteredDecisions?.length || 0} 件）`
+    : "";
+
   const markDone = (id: string) => {
-    setDecisions((prev) => prev.map((d) =>
-      d.id === id ? { ...d, status: "已完成", completedAt: today() } : d,
-    ));
+    setDecisions((prev) => prev.map((d) => d.id === id ? { ...d, status: "已完成", completedAt: today() } : d));
     setViewing(null);
   };
   const deleteOne = (d: Decision) => {
@@ -56,112 +75,152 @@ export default function DecisionsPage({ decisions, setDecisions, departments, us
   };
 
   return (
-    <div className="max-w-5xl mx-auto pb-8">
+    <div className="max-w-6xl mx-auto pb-8">
       <div className="flex items-center justify-between mb-8">
         <div>
           <div className="text-[11px] text-slate-400 tracking-[0.25em] font-bold mb-2">DECISION LOG</div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">
             還有 <span className="text-blue-500">{inProgress.length + overdue.length}</span> 件決策待完成
           </h1>
-          <p className="text-sm text-slate-500 mt-1">記錄董事會/投委會決議，追蹤執行進度。</p>
+          <p className="text-sm text-slate-500 mt-1">點數據卡片看對應決策。</p>
         </div>
         <Button variant="primary" icon={<Plus size={14} />} onClick={() => setCreating(true)}>
           新增決策
         </Button>
       </div>
 
-      {/* 3 欄統計 + 圓餅 + 部門 bar */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
-        {/* 左：3 個狀態統計 */}
-        <div className="grid grid-cols-3 gap-3 lg:col-span-1">
-          <StatCard label="逾期"   count={overdue.length}    status="逾期" />
-          <StatCard label="執行中" count={inProgress.length} status="執行中" />
-          <StatCard label="已完成" count={done.length}       status="已完成" />
+      {/* 主視覺：左 3 大卡 + 右 2 張圖 */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-6">
+        {/* 左側 3 大狀態卡 */}
+        <div className="lg:col-span-3 grid grid-cols-3 gap-3">
+          <BigStatCard
+            label="逾期"
+            count={overdue.length}
+            status="逾期"
+            active={filter === "逾期"}
+            onClick={() => setFilter(filter === "逾期" ? null : "逾期")}
+          />
+          <BigStatCard
+            label="執行中"
+            count={inProgress.length}
+            status="執行中"
+            active={filter === "執行中"}
+            onClick={() => setFilter(filter === "執行中" ? null : "執行中")}
+          />
+          <BigStatCard
+            label="已完成"
+            count={done.length}
+            status="已完成"
+            active={filter === "已完成"}
+            onClick={() => setFilter(filter === "已完成" ? null : "已完成")}
+          />
         </div>
 
-        {/* 中：圓餅 */}
-        <Card className="p-5 flex items-center gap-4">
-          <div className="w-32 h-32 shrink-0">
-            <ResponsiveContainer>
-              <PieChart>
-                <Pie
-                  data={[
-                    { name: "執行中", value: inProgress.length, color: "#3b82f6" },
-                    { name: "逾期",   value: overdue.length,   color: "#ef4444" },
-                    { name: "已完成", value: done.length,      color: "#10b981" },
-                  ]}
-                  innerRadius={32}
-                  outerRadius={56}
-                  dataKey="value"
-                  startAngle={90}
-                  endAngle={-270}
-                >
-                  <Cell fill="#3b82f6" />
-                  <Cell fill="#ef4444" />
-                  <Cell fill="#10b981" />
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="text-xs space-y-1.5">
-            <div className="text-[10px] font-bold tracking-wider text-slate-400 mb-2">STATUS BREAKDOWN</div>
-            <Legend dot="bg-blue-500"    label="執行中" value={inProgress.length} />
-            <Legend dot="bg-red-500"     label="逾期"   value={overdue.length} />
-            <Legend dot="bg-emerald-500" label="已完成" value={done.length} />
-          </div>
-        </Card>
+        {/* 右側：上 donut, 下 bar */}
+        <div className="lg:col-span-2 flex flex-col gap-3">
+          <Card className="p-4 flex items-center gap-3 flex-1">
+            <div className="w-24 h-24 shrink-0">
+              <ResponsiveContainer>
+                <PieChart>
+                  <Pie data={[
+                    { name: "執行中", value: inProgress.length },
+                    { name: "逾期",   value: overdue.length },
+                    { name: "已完成", value: done.length },
+                  ]} innerRadius={28} outerRadius={46} dataKey="value" startAngle={90} endAngle={-270} stroke="none">
+                    <Cell fill="#3b82f6" />
+                    <Cell fill="#ef4444" />
+                    <Cell fill="#10b981" />
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="text-xs space-y-1.5 flex-1">
+              <div className="text-[9px] font-bold tracking-wider text-slate-400 mb-1.5">STATUS</div>
+              <Legend dot="bg-blue-500"    label="執行中" value={inProgress.length} />
+              <Legend dot="bg-red-500"     label="逾期"   value={overdue.length} />
+              <Legend dot="bg-emerald-500" label="已完成" value={done.length} />
+            </div>
+          </Card>
 
-        {/* 右：部門 bar */}
-        <Card className="p-5">
-          <div className="text-[10px] font-bold tracking-wider text-slate-400 mb-3">指派部門分布</div>
-          <div className="h-32">
-            <ResponsiveContainer>
-              <BarChart data={deptDistribution}>
-                <XAxis dataKey="dept" tick={{ fontSize: 9, fill: "#64748b" }} axisLine={false} tickLine={false} />
-                <YAxis hide />
-                <Tooltip
-                  contentStyle={{ borderRadius: 8, border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", fontSize: 11 }}
-                />
-                <Bar dataKey="count" fill="#3b82f6" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
+          <Card className="p-4">
+            <div className="text-[9px] font-bold tracking-wider text-slate-400 mb-2">
+              指派部門分布 <span className="text-slate-300 font-normal">· 點長條看決策</span>
+            </div>
+            <div className="h-20">
+              <ResponsiveContainer>
+                <BarChart data={deptDistribution}>
+                  <XAxis dataKey="dept" tick={{ fontSize: 9, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                  <YAxis hide />
+                  <Tooltip contentStyle={{ borderRadius: 8, border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", fontSize: 11 }} />
+                  <Bar dataKey="count" radius={[6, 6, 0, 0]} cursor="pointer"
+                    onClick={(payload: any) => {
+                      const d = payload?.fullDept;
+                      if (!d) return;
+                      setFilter((prev) =>
+                        prev && typeof prev === "object" && prev.type === "dept" && prev.name === d
+                          ? null
+                          : { type: "dept", name: d },
+                      );
+                    }}>
+                    {deptDistribution.map((d, i) => {
+                      const isSel = filter && typeof filter === "object" && filter.type === "dept" && filter.name === d.fullDept;
+                      const isDeptMode = filter && typeof filter === "object" && filter.type === "dept";
+                      return <Cell key={i} fill="#3b82f6" opacity={isSel ? 1 : (isDeptMode ? 0.3 : 0.85)} stroke={isSel ? "#1e293b" : "none"} strokeWidth={isSel ? 2 : 0} />;
+                    })}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </div>
       </div>
 
-      {/* 三組列表 */}
-      {[
-        { label: "逾期（需優先處理）", items: overdue },
-        { label: "執行中", items: inProgress },
-        { label: "已完成", items: done },
-      ].map((g) => g.items.length > 0 && (
-        <section key={g.label} className="mb-6">
-          <h3 className="text-sm font-bold text-slate-700 mb-3">{g.label} <span className="text-slate-400 text-xs">({g.items.length})</span></h3>
-          <div className="space-y-2">
-            {g.items.map((d) => (
-              <DecisionRow key={d.id} d={d} onClick={() => setViewing(d)} />
-            ))}
-          </div>
-        </section>
-      ))}
+      {/* 篩選結果 */}
+      <AnimatePresence>
+        {filter && filteredDecisions && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="space-y-3"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-900">{filterTitle}</h3>
+              <button onClick={() => setFilter(null)} className="text-xs text-slate-400 hover:text-slate-700 flex items-center gap-1">
+                <X size={14} /> 取消篩選
+              </button>
+            </div>
+            {filteredDecisions.length === 0 ? (
+              <Card className="p-12 text-center text-slate-400 text-sm">沒有符合的決策</Card>
+            ) : (
+              <div className="space-y-2">
+                {filteredDecisions.map((d) => (
+                  <DecisionRow key={d.id} d={d} onClick={() => setViewing(d)} />
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 預設提示 */}
+      {!filter && (
+        <Card className="p-12 text-center bg-slate-50/50 border-dashed">
+          <div className="text-slate-400 text-sm mb-1">尚未選擇篩選條件</div>
+          <div className="text-slate-400 text-xs">點上方狀態卡片或部門條來查看決策</div>
+        </Card>
+      )}
 
       {decisions.length === 0 && (
-        <Card className="p-12 text-center text-slate-400">尚無決策記錄</Card>
+        <Card className="p-12 text-center text-slate-400 mt-4">尚無決策記錄</Card>
       )}
 
       {/* 詳情 Modal */}
-      <Modal
-        open={!!viewing}
-        onClose={() => setViewing(null)}
-        title={viewing?.title}
-        subtitle={viewing && `${viewing.decidedBy} · 決議於 ${viewing.decidedAt}`}
-        maxWidth={580}
-      >
+      <Modal open={!!viewing} onClose={() => setViewing(null)} title={viewing?.title}
+        subtitle={viewing && `${viewing.decidedBy} · 決議於 ${viewing.decidedAt}`} maxWidth={580}>
         {viewing && (
           <div className="space-y-4">
-            <div className="bg-slate-50 rounded-xl p-4 text-sm leading-relaxed text-slate-700">
-              {viewing.content}
-            </div>
+            <div className="bg-slate-50 rounded-xl p-4 text-sm leading-relaxed text-slate-700">{viewing.content}</div>
             <div className="grid grid-cols-2 gap-3 text-xs">
               <KV label="指派部門" value={viewing.assignedDept} />
               <KV label="預期完成" value={viewing.dueDate} />
@@ -180,16 +239,13 @@ export default function DecisionsPage({ decisions, setDecisions, departments, us
                 <Button variant="ghost" size="sm" icon={<Trash2 size={12} />} onClick={() => deleteOne(viewing)}>刪除</Button>
               </div>
               {viewing.status !== "已完成" && (
-                <Button variant="success" icon={<Check size={14} />} onClick={() => markDone(viewing.id)}>
-                  標記為已完成
-                </Button>
+                <Button variant="success" icon={<Check size={14} />} onClick={() => markDone(viewing.id)}>標記為已完成</Button>
               )}
             </div>
           </div>
         )}
       </Modal>
 
-      {/* 新增 / 編輯 Modal */}
       <DecisionFormModal
         open={creating || !!editing}
         onClose={() => { setCreating(false); setEditing(null); }}
@@ -199,17 +255,10 @@ export default function DecisionsPage({ decisions, setDecisions, departments, us
           if (editing) {
             setDecisions((prev) => prev.map((x) => x.id === editing.id ? { ...x, ...form } : x));
           } else {
-            const newD: Decision = {
-              id: "d" + Date.now(),
-              decidedAt: today(),
-              status: "執行中",
-              linkedCases: [],
-              ...form,
-            };
+            const newD: Decision = { id: "d" + Date.now(), decidedAt: today(), status: "執行中", linkedCases: [], ...form };
             setDecisions((prev) => [newD, ...prev]);
           }
-          setCreating(false);
-          setEditing(null);
+          setCreating(false); setEditing(null);
         }}
         userProfile={userProfile}
       />
@@ -217,37 +266,42 @@ export default function DecisionsPage({ decisions, setDecisions, departments, us
   );
 }
 
+function BigStatCard({ label, count, status, active, onClick }: {
+  label: string; count: number; status: keyof typeof STATUS_STYLE; active?: boolean; onClick?: () => void;
+}) {
+  const s = STATUS_STYLE[status];
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "text-left p-6 bg-white rounded-2xl border transition-all min-h-[180px] flex flex-col",
+        active ? `${s.border} ring-2 ${s.ring} shadow-md` : "border-slate-200/60 hover:border-slate-300 hover:shadow-sm",
+      )}
+    >
+      <div className="flex items-center gap-2 mb-3">
+        <div className={cn("w-2 h-2 rounded-full", s.dot)} />
+        <div className="text-xs text-slate-500 font-bold tracking-wide">{label}</div>
+      </div>
+      <div className={cn("text-6xl font-black tracking-tighter mt-auto", s.text)}>{count}</div>
+    </button>
+  );
+}
+
 function Legend({ dot, label, value }: { dot: string; label: string; value: number }) {
   return (
     <div className="flex items-center gap-2">
       <span className={cn("w-2 h-2 rounded-full", dot)} />
-      <span className="text-slate-500 w-12">{label}</span>
+      <span className="text-slate-500 w-10">{label}</span>
       <span className="font-bold text-slate-900">{value}</span>
     </div>
-  );
-}
-
-function StatCard({ label, count, status }: { label: string; count: number; status: keyof typeof STATUS_STYLE }) {
-  const s = STATUS_STYLE[status];
-  return (
-    <Card className="p-5">
-      <div className="flex items-center gap-2 mb-2">
-        <div className={cn("w-2 h-2 rounded-full", s.dot)} />
-        <div className="text-[10px] text-slate-400 tracking-wider font-bold">{label.toUpperCase()}</div>
-      </div>
-      <div className={cn("text-3xl font-black tracking-tight", s.text)}>{count}</div>
-    </Card>
   );
 }
 
 function DecisionRow({ d, onClick }: { d: Decision; onClick: () => void; key?: any }) {
   const s = STATUS_STYLE[d.status];
   return (
-    <motion.button
-      whileHover={{ x: 2 }}
-      onClick={onClick}
-      className="w-full text-left p-4 bg-white rounded-xl border border-slate-200/60 hover:border-slate-300 hover:shadow-sm transition-all"
-    >
+    <motion.button whileHover={{ x: 2 }} onClick={onClick}
+      className="w-full text-left p-4 bg-white rounded-xl border border-slate-200/60 hover:border-slate-300 hover:shadow-sm transition-all">
       <div className="flex items-center gap-3">
         <div className={cn("w-2 h-2 rounded-full shrink-0", s.dot)} />
         <div className="flex-1 min-w-0">
@@ -256,9 +310,7 @@ function DecisionRow({ d, onClick }: { d: Decision; onClick: () => void; key?: a
             {d.decidedBy} · 指派 {d.assignedDept} · 期限 {d.dueDate}
           </div>
         </div>
-        <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0", s.bg, s.text)}>
-          {s.label}
-        </span>
+        <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0", s.bg, s.text)}>{d.status}</span>
       </div>
     </motion.button>
   );
@@ -273,16 +325,9 @@ function KV({ label, value, status }: { label: string; value: string; status?: k
   );
 }
 
-// ===== 新增/編輯表單 Modal =====
-function DecisionFormModal({
-  open, onClose, existing, departments, onSave, userProfile,
-}: {
-  open: boolean;
-  onClose: () => void;
-  existing: Decision | null;
-  departments: string[];
-  onSave: (data: Omit<Decision, "id">) => void;
-  userProfile: UserProfile | null;
+function DecisionFormModal({ open, onClose, existing, departments, onSave }: {
+  open: boolean; onClose: () => void; existing: Decision | null; departments: string[];
+  onSave: (data: Omit<Decision, "id">) => void; userProfile: UserProfile | null;
 }) {
   const [form, setForm] = useState({
     title: existing?.title || "",
@@ -300,25 +345,20 @@ function DecisionFormModal({
         <Field label="決策標題 *" value={form.title} onChange={(v) => setForm({ ...form, title: v })} placeholder="例：A 新創 Pre-A 輪投資金額上限" />
         <Field label="決議內容 *" value={form.content} onChange={(v) => setForm({ ...form, content: v })} placeholder="具體決議內容與條件" rows={3} />
         <div className="grid grid-cols-2 gap-3">
-          <Select label="決議單位" value={form.decidedBy} onChange={(v) => setForm({ ...form, decidedBy: v })}
-            options={["董事會", "投資委員會", "營運會議"]} />
-          <Select label="指派執行" value={form.assignedDept} onChange={(v) => setForm({ ...form, assignedDept: v })}
-            options={departments} />
+          <Select label="決議單位" value={form.decidedBy} onChange={(v) => setForm({ ...form, decidedBy: v })} options={["董事會", "投資委員會", "營運會議"]} />
+          <Select label="指派執行" value={form.assignedDept} onChange={(v) => setForm({ ...form, assignedDept: v })} options={departments} />
         </div>
         <Field label="預期完成日 *" type="date" value={form.dueDate} onChange={(v) => setForm({ ...form, dueDate: v })} />
         <Field label="備註" value={form.notes} onChange={(v) => setForm({ ...form, notes: v })} placeholder="(選填)" rows={2} />
         <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
           <Button variant="secondary" onClick={onClose}>取消</Button>
-          <Button
-            variant="primary"
-            disabled={!valid}
+          <Button variant="primary" disabled={!valid}
             onClick={() => onSave({
               ...form,
               decidedAt: existing?.decidedAt || today(),
               status: existing?.status || "執行中",
               linkedCases: existing?.linkedCases || [],
-            })}
-          >
+            })}>
             {existing ? "更新" : "記錄決策"}
           </Button>
         </div>
@@ -328,8 +368,7 @@ function DecisionFormModal({
 }
 
 function Field({ label, value, onChange, placeholder, type = "text", rows }: {
-  label: string; value: string; onChange: (v: string) => void;
-  placeholder?: string; type?: string; rows?: number;
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string; rows?: number;
 }) {
   const Tag = rows ? "textarea" : "input";
   return (
@@ -337,11 +376,8 @@ function Field({ label, value, onChange, placeholder, type = "text", rows }: {
       <label className="block text-[11px] font-bold text-slate-600 mb-1.5 tracking-wide">{label}</label>
       <Tag
         // @ts-ignore
-        type={type}
-        value={value}
-        rows={rows}
-        onChange={(e: any) => onChange(e.target.value)}
-        placeholder={placeholder}
+        type={type} value={value} rows={rows}
+        onChange={(e: any) => onChange(e.target.value)} placeholder={placeholder}
         className="w-full px-3 py-2.5 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
       />
     </div>
