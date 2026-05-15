@@ -135,7 +135,7 @@ export default function WeeklyReportPage({ reports, setReports, departments, use
         <FormField label="下週計畫" value={form.nextWeek} onChange={(v) => setForm({ ...form, nextWeek: v })}
           placeholder="下週重點工作" rows={2} />
         <FormField label="關鍵字（逗號分隔）" value={form.keywords} onChange={(v) => setForm({ ...form, keywords: v })}
-          placeholder="例：A 新創, FinTech, Pre-A" />
+          placeholder="例：田宮電機, FinTech, Pre-A" />
 
         <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-4">
           {saved && (

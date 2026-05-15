@@ -342,7 +342,7 @@ function DecisionFormModal({ open, onClose, existing, departments, onSave }: {
   return (
     <Modal open={open} onClose={onClose} title={existing ? "編輯決策" : "新增決策"} maxWidth={560}>
       <div className="space-y-4">
-        <Field label="決策標題 *" value={form.title} onChange={(v) => setForm({ ...form, title: v })} placeholder="例：A 新創 Pre-A 輪投資金額上限" />
+        <Field label="決策標題 *" value={form.title} onChange={(v) => setForm({ ...form, title: v })} placeholder="例：田宮電機 Pre-A 輪投資金額上限" />
         <Field label="決議內容 *" value={form.content} onChange={(v) => setForm({ ...form, content: v })} placeholder="具體決議內容與條件" rows={3} />
         <div className="grid grid-cols-2 gap-3">
           <Select label="決議單位" value={form.decidedBy} onChange={(v) => setForm({ ...form, decidedBy: v })} options={["董事會", "投資委員會", "營運會議"]} />

@@ -270,7 +270,7 @@ function HandoffFormModal({ open, onClose, departments, onSave }: {
           <Sel label="交接部門 (from)" value={form.from} onChange={(v) => setForm({ ...form, from: v })} options={departments} />
           <Sel label="接手部門 (to)"   value={form.to}   onChange={(v) => setForm({ ...form, to: v })}   options={departments} />
         </div>
-        <Inp label="交接標題 *" value={form.title} onChange={(v) => setForm({ ...form, title: v })} placeholder="例：A 新創 Pre-A 輪產業分析委託" />
+        <Inp label="交接標題 *" value={form.title} onChange={(v) => setForm({ ...form, title: v })} placeholder="例：田宮電機 Pre-A 輪產業分析委託" />
         <Inp label="案件背景 *" value={form.background} onChange={(v) => setForm({ ...form, background: v })} rows={3} />
         <Inp label="目前進度 *" value={form.progress}   onChange={(v) => setForm({ ...form, progress: v })}   rows={2} />
         <Inp label="待辦事項 *" value={form.todo}       onChange={(v) => setForm({ ...form, todo: v })}       rows={2} />
