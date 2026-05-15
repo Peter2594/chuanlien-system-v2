@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Calendar, FileText, ChevronDown } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Calendar, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Card } from "../components/ui/Card";
 import { Pill } from "../components/ui/Pill";
@@ -14,8 +14,38 @@ interface Props {
   blockers: Blocker[];
 }
 
+// 自動分類
+function classifyMeeting(title: string): "週會" | "月會" | "季度" | "其他" {
+  if (/週會|周會|weekly/i.test(title)) return "週會";
+  if (/月會|monthly|投資委員會|業務檢討|資產管理檢討/i.test(title)) return "月會";
+  if (/季|quarterly|Q[1-4]/i.test(title)) return "季度";
+  return "其他";
+}
+
+const CATEGORY_STYLE: Record<string, { color: string; bg: string; label: string }> = {
+  週會:   { color: "text-blue-700",    bg: "bg-blue-50",    label: "週會" },
+  月會:   { color: "text-emerald-700", bg: "bg-emerald-50", label: "月會" },
+  季度:   { color: "text-violet-700",  bg: "bg-violet-50",  label: "季度會議" },
+  其他:   { color: "text-slate-700",   bg: "bg-slate-50",   label: "其他" },
+};
+
 export default function MeetingPrepPage({ meetingHistory, decisions, handoffs, blockers }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [filterCat, setFilterCat] = useState<string>("all");
+
+  // 按分類統計
+  const categorized = useMemo(() => {
+    const groups: Record<string, MeetingHistory[]> = { 週會: [], 月會: [], 季度: [], 其他: [] };
+    meetingHistory.forEach((m) => {
+      const cat = classifyMeeting(m.title);
+      groups[cat].push(m);
+    });
+    return groups;
+  }, [meetingHistory]);
+
+  const visibleMeetings = filterCat === "all"
+    ? meetingHistory
+    : categorized[filterCat] || [];
 
   // 自動生成本週議程
   const autoAgenda = [
@@ -88,14 +118,46 @@ export default function MeetingPrepPage({ meetingHistory, decisions, handoffs, b
         )}
       </Card>
 
-      {/* 歷史會議 */}
-      <div className="mb-3 flex items-center justify-between">
+      {/* 歷史會議 - 分類 */}
+      <div className="mb-3 flex items-center justify-between flex-wrap gap-2">
         <h3 className="text-sm font-bold text-slate-700">歷史會議紀錄</h3>
         <span className="text-xs text-slate-400">共 {meetingHistory.length} 場</span>
       </div>
+
+      {/* 分類 tabs */}
+      <div className="flex border border-slate-200 bg-white rounded-lg mb-4 overflow-hidden text-xs">
+        <button
+          onClick={() => setFilterCat("all")}
+          className={cn(
+            "flex-1 px-3 py-2 transition flex items-center justify-center gap-2",
+            filterCat === "all" ? "bg-slate-900 text-white font-bold" : "text-slate-500 hover:text-slate-900",
+          )}>
+          全部 <span className="opacity-60">({meetingHistory.length})</span>
+        </button>
+        {(["週會", "月會", "季度", "其他"] as const).map((cat) => {
+          const s = CATEGORY_STYLE[cat];
+          const count = categorized[cat]?.length || 0;
+          if (count === 0) return null;
+          return (
+            <button key={cat}
+              onClick={() => setFilterCat(cat)}
+              className={cn(
+                "flex-1 px-3 py-2 transition flex items-center justify-center gap-2 border-l border-slate-200",
+                filterCat === cat ? `${s.bg} ${s.color} font-bold` : "text-slate-500 hover:text-slate-900",
+              )}>
+              {s.label} <span className="opacity-60">({count})</span>
+            </button>
+          );
+        })}
+      </div>
+
       <div className="space-y-2">
-        {meetingHistory.slice(0, 10).map((m) => {
+        {visibleMeetings.length === 0 ? (
+          <Card className="p-8 text-center text-slate-400 text-xs">此分類沒有會議紀錄</Card>
+        ) : visibleMeetings.map((m) => {
           const isExp = expandedId === m.id;
+          const cat = classifyMeeting(m.title);
+          const catStyle = CATEGORY_STYLE[cat];
           return (
             <motion.div key={m.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}>
               <button onClick={() => setExpandedId(isExp ? null : m.id)}
@@ -106,8 +168,13 @@ export default function MeetingPrepPage({ meetingHistory, decisions, handoffs, b
                 <div className="flex items-center gap-3">
                   <span className="text-xl">{m.icon}</span>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-bold text-slate-900 truncate">{m.title}</div>
-                    <div className="text-[11px] text-slate-500 mt-0.5">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-sm font-bold text-slate-900 truncate">{m.title}</span>
+                      <span className={cn("text-[9px] px-1.5 py-0.5 rounded font-bold tracking-wider shrink-0", catStyle.bg, catStyle.color)}>
+                        {catStyle.label}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-500">
                       {m.schedule} · {m.archivedAt}
                     </div>
                   </div>

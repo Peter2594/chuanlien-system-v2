@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { FileText, Check, Send } from "lucide-react";
-import { motion } from "motion/react";
+import { useState, useMemo } from "react";
+import { FileText, Check, Send, ChevronDown } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Pill } from "../components/ui/Pill";
@@ -29,13 +29,34 @@ export default function WeeklyReportPage({ reports, setReports, departments, use
   });
   const [saved, setSaved] = useState(false);
 
+  const [expandedReportId, setExpandedReportId] = useState<string | null>(null);
+  const [historyVisible, setHistoryVisible] = useState(8);
+  const [deptFilter, setDeptFilter] = useState<string>("all");
+
   const thisWeek = reports.filter((r) => r.week === CURRENT_WEEK_LABEL);
-  const lastWeek = reports.filter((r) => {
-    const d = parseWeekStart(r.week);
-    if (!d) return false;
-    const days = Math.round((+NOW - +d) / 86400000);
-    return days >= 7 && days < 14;
-  });
+
+  // 歷史週報依週次分組
+  const groupedHistory = useMemo(() => {
+    const groups: Record<string, Report[]> = {};
+    reports.forEach((r) => {
+      if (r.week === CURRENT_WEEK_LABEL) return;
+      if (deptFilter !== "all" && r.dept !== deptFilter) return;
+      if (!groups[r.week]) groups[r.week] = [];
+      groups[r.week].push(r);
+    });
+    const sortedKeys = Object.keys(groups).sort((a, b) => {
+      const ka = String(a).match(/(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+      const kb = String(b).match(/(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+      const sa = ka ? +ka[1] * 10000 + +ka[2] * 100 + +ka[3] : 0;
+      const sb = kb ? +kb[1] * 10000 + +kb[2] * 100 + +kb[3] : 0;
+      return sb - sa;
+    });
+    return sortedKeys.map((w) => ({
+      week: w,
+      reports: groups[w],
+      weeksAgo: Math.max(1, Math.round((+NOW - +(parseWeekStart(w) || NOW)) / (86400000 * 7))),
+    }));
+  }, [reports, deptFilter]);
 
   // 計算週日截止
   const sunday = new Date(NOW);
@@ -134,21 +155,69 @@ export default function WeeklyReportPage({ reports, setReports, departments, use
 
       {/* 本週已交 */}
       {thisWeek.length > 0 && (
-        <section className="mb-6">
+        <section className="mb-8">
           <h3 className="text-sm font-bold text-slate-700 mb-3">本週已提交（{thisWeek.length}/3）</h3>
           <div className="space-y-2">
-            {thisWeek.map((r) => <ReportRow key={r.id} r={r} />)}
+            {thisWeek.map((r) => (
+              <ReportRow key={r.id} r={r} isExpanded={expandedReportId === r.id}
+                onToggle={() => setExpandedReportId(expandedReportId === r.id ? null : r.id)} />
+            ))}
           </div>
         </section>
       )}
 
-      {/* 上週 */}
-      {lastWeek.length > 0 && (
+      {/* 歷史週報 */}
+      {groupedHistory.length > 0 && (
         <section>
-          <h3 className="text-sm font-bold text-slate-700 mb-3">上週週報</h3>
-          <div className="space-y-2">
-            {lastWeek.map((r) => <ReportRow key={r.id} r={r} />)}
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <h3 className="text-sm font-bold text-slate-700">
+              歷史週報 · {groupedHistory.length} 個週次
+            </h3>
+            <div className="flex border border-slate-200 rounded-lg bg-white text-xs overflow-hidden">
+              {[{ k: "all", l: "全部" }, ...activeDepts.map((d) => ({ k: d, l: d.replace("部", "") }))].map((opt, i) => (
+                <button key={opt.k}
+                  onClick={() => { setDeptFilter(opt.k); setHistoryVisible(8); }}
+                  className={cn(
+                    "px-3 py-1.5 transition",
+                    i > 0 && "border-l border-slate-200",
+                    deptFilter === opt.k ? "bg-slate-900 text-white font-bold" : "text-slate-500 hover:text-slate-900",
+                  )}>
+                  {opt.l}
+                </button>
+              ))}
+            </div>
           </div>
+
+          <div className="space-y-2">
+            {groupedHistory.slice(0, historyVisible).map((g) => {
+              const label = g.weeksAgo === 1 ? "上週"
+                          : g.weeksAgo === 2 ? "上上週"
+                          : `${g.weeksAgo} 週前`;
+              return (
+                <div key={g.week} className="bg-white rounded-xl border border-slate-200/60 overflow-hidden">
+                  <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-center gap-3">
+                    <Pill tone="highlight">{label}</Pill>
+                    <span className="text-xs font-semibold text-slate-700">{displayWeek(g.week)}</span>
+                    <span className="ml-auto text-[10px] text-slate-400">{g.reports.length} 份</span>
+                  </div>
+                  <div className="p-3 space-y-2">
+                    {g.reports.map((r) => (
+                      <ReportRow key={r.id} r={r} isExpanded={expandedReportId === r.id}
+                        onToggle={() => setExpandedReportId(expandedReportId === r.id ? null : r.id)} />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {historyVisible < groupedHistory.length && (
+            <div className="text-center mt-4">
+              <Button variant="secondary" onClick={() => setHistoryVisible(historyVisible + 12)}>
+                載入更多（還有 {groupedHistory.length - historyVisible} 週）
+              </Button>
+            </div>
+          )}
         </section>
       )}
     </div>
@@ -169,24 +238,67 @@ function FormField({ label, value, onChange, placeholder, rows }: {
   );
 }
 
-function ReportRow({ r }: { r: Report; key?: any }) {
+function ReportRow({ r, isExpanded, onToggle }: { r: Report; isExpanded?: boolean; onToggle?: () => void; key?: any }) {
   return (
-    <Card className="p-4">
-      <div className="flex items-start justify-between gap-3 mb-2">
-        <div>
-          <div className="text-sm font-bold text-slate-900">{r.dept}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">{r.author} · {r.submittedAt}</div>
+    <button
+      onClick={onToggle}
+      className={cn(
+        "w-full text-left rounded-xl border transition-all overflow-hidden bg-white",
+        isExpanded ? "border-blue-300 shadow-md" : "border-slate-200/60 hover:border-slate-300 hover:shadow-sm",
+      )}
+    >
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-bold text-slate-900">{r.dept}</div>
+            <div className="text-[11px] text-slate-500 mt-0.5">{r.author} · {r.submittedAt}</div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="flex flex-wrap gap-1 justify-end max-w-[180px]">
+              {(r.keywords || []).slice(0, 3).map((k) => <Pill key={k} tone="blue">{k}</Pill>)}
+            </div>
+            <ChevronDown size={14} className={cn("text-slate-400 transition", isExpanded && "rotate-180")} />
+          </div>
         </div>
-        <div className="flex flex-wrap gap-1 justify-end">
-          {(r.keywords || []).slice(0, 3).map((k) => <Pill key={k} tone="blue">{k}</Pill>)}
-        </div>
+
+        {!isExpanded && r.cases && (
+          <div className="text-xs text-slate-600 mt-2 whitespace-pre-line line-clamp-2">{r.cases}</div>
+        )}
       </div>
-      {r.cases && (
-        <div className="text-xs text-slate-600 mt-2 whitespace-pre-line line-clamp-3">{r.cases}</div>
-      )}
-      {r.blockers && (
-        <div className="mt-2 text-xs text-red-600 bg-red-50 rounded px-2 py-1">⚠ {r.blockers}</div>
-      )}
-    </Card>
+
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }} className="overflow-hidden border-t border-slate-100">
+            <div className="p-4 space-y-3 text-xs bg-slate-50">
+              {r.cases && (
+                <Field label="本週進行中案件" value={r.cases} />
+              )}
+              {r.blockers && (
+                <Field label="本週卡點" value={r.blockers} variant="warn" />
+              )}
+              {r.needHelp && (
+                <Field label="需要協助" value={r.needHelp} variant="hint" />
+              )}
+              {r.nextWeek && (
+                <Field label="下週計畫" value={r.nextWeek} />
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </button>
+  );
+}
+
+function Field({ label, value, variant }: { label: string; value: string; variant?: "warn" | "hint" }) {
+  const bg = variant === "warn" ? "bg-red-50 text-red-800"
+           : variant === "hint" ? "bg-amber-50 text-amber-800"
+           : "bg-white text-slate-700";
+  return (
+    <div>
+      <div className="text-[10px] text-slate-400 font-bold tracking-wider mb-1.5">{label}</div>
+      <div className={cn("rounded-lg p-3 leading-relaxed whitespace-pre-line", bg)}>{value}</div>
+    </div>
   );
 }

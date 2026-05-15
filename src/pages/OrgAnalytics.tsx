@@ -2,8 +2,9 @@ import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Card } from "../components/ui/Card";
 import { Pill } from "../components/ui/Pill";
+import { cn } from "../lib/utils";
 import { analyzeDeptNetwork } from "../lib/algorithms";
-import { displayWeek } from "../lib/dateUtils";
+import { displayWeek, parseWeekStart, NOW } from "../lib/dateUtils";
 import type { Report, Handoff, Department } from "../lib/types";
 
 interface Props {
@@ -13,8 +14,27 @@ interface Props {
 }
 
 export default function OrgAnalyticsPage({ reports, handoffs, departments }: Props) {
-  const network = useMemo(() => analyzeDeptNetwork(reports, departments, handoffs), [reports, handoffs, departments]);
+  const [timeRange, setTimeRange] = useState<"4w" | "8w" | "12w" | "26w" | "52w" | "all">("4w");
   const [selectedDept, setSelectedDept] = useState<string | null>(null);
+
+  // 依時間範圍篩選
+  const { filteredReports, filteredHandoffs } = useMemo(() => {
+    if (timeRange === "all") return { filteredReports: reports, filteredHandoffs: handoffs };
+    const weeksMap: Record<string, number> = { "4w": 4, "8w": 8, "12w": 12, "26w": 26, "52w": 52 };
+    const cutoff = new Date(NOW);
+    cutoff.setDate(cutoff.getDate() - (weeksMap[timeRange] || 4) * 7);
+    const fr = reports.filter((r) => {
+      const d = parseWeekStart(r.week);
+      return d && +d >= +cutoff;
+    });
+    const fh = handoffs.filter((h) => {
+      const d = h.createdAt ? new Date(h.createdAt) : null;
+      return d && +d >= +cutoff;
+    });
+    return { filteredReports: fr, filteredHandoffs: fh };
+  }, [reports, handoffs, timeRange]);
+
+  const network = useMemo(() => analyzeDeptNetwork(filteredReports, departments, filteredHandoffs), [filteredReports, filteredHandoffs, departments]);
 
   // 該部門相關的真實資料
   const deptDetails = useMemo(() => {
@@ -22,18 +42,18 @@ export default function OrgAnalyticsPage({ reports, handoffs, departments }: Pro
     const deptObj = departments.find((d) => d.name === selectedDept);
     const aliases = [selectedDept, deptObj?.shortName].filter(Boolean) as string[];
 
-    // 該部門發出 / 接收的交接
-    const out = handoffs.filter((h) => aliases.includes(h.from)).slice(0, 6);
-    const inc = handoffs.filter((h) => aliases.includes(h.to)).slice(0, 6);
+    // 該部門發出 / 接收的交接 (依目前時間範圍)
+    const out = filteredHandoffs.filter((h) => aliases.includes(h.from)).slice(0, 6);
+    const inc = filteredHandoffs.filter((h) => aliases.includes(h.to)).slice(0, 6);
 
     // 該部門最近的週報
-    const deptReports = reports
+    const deptReports = filteredReports
       .filter((r) => r.dept === selectedDept)
       .sort((a, b) => String(b.week).localeCompare(String(a.week)))
       .slice(0, 4);
 
     return { out, inc, deptReports };
-  }, [selectedDept, handoffs, reports, departments]);
+  }, [selectedDept, filteredHandoffs, filteredReports, departments]);
 
   // 部門位置（等距）
   const W = 600, H = 380;
@@ -48,14 +68,39 @@ export default function OrgAnalyticsPage({ reports, handoffs, departments }: Pro
 
   return (
     <div className="max-w-6xl mx-auto pb-8">
-      <div className="mb-8">
-        <div className="text-[11px] text-violet-500 tracking-[0.25em] font-bold mb-2">ORG NETWORK</div>
-        <h1 className="text-2xl font-black text-slate-900 tracking-tight mb-2">
-          部門互動網絡
-        </h1>
-        <p className="text-sm text-slate-500">
-          從週報文字（+1）和交接單（+2）累計每對部門的協作次數。線越粗 = 互動越多。
-        </p>
+      <div className="mb-6 flex items-end justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight mb-2">
+            部門互動網絡
+          </h1>
+          <p className="text-sm text-slate-500">
+            點部門看實際週報與交接 · 統計範圍 <strong className="text-slate-700">{
+              { "4w": "近 4 週", "8w": "近 8 週", "12w": "近 3 個月", "26w": "近半年", "52w": "近 1 年", "all": "全部歷史" }[timeRange]
+            }</strong> · 共 {filteredReports.length} 份週報、{filteredHandoffs.length} 筆交接
+          </p>
+        </div>
+
+        {/* 時間範圍 selector */}
+        <div className="flex border border-slate-200 bg-white rounded-lg overflow-hidden">
+          {[
+            { k: "4w",  l: "4 週" },
+            { k: "8w",  l: "8 週" },
+            { k: "12w", l: "3 月" },
+            { k: "26w", l: "半年" },
+            { k: "52w", l: "1 年" },
+            { k: "all", l: "全部" },
+          ].map((opt, i) => (
+            <button key={opt.k}
+              onClick={() => setTimeRange(opt.k as any)}
+              className={cn(
+                "px-3 py-1.5 text-xs transition",
+                i > 0 && "border-l border-slate-200",
+                timeRange === opt.k ? "bg-violet-500 text-white font-bold" : "text-slate-500 hover:text-slate-900",
+              )}>
+              {opt.l}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
