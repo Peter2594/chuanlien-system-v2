@@ -184,7 +184,70 @@ function buildReports(): Report[] {
   return out;
 }
 
-export const SEED_REPORTS: Report[] = buildReports();
+// ===== 本週週報（手寫，呼應當前活躍卡點與決策） =====
+const THIS_WEEK_SD = (() => {
+  const d = new Date(NOW);
+  const day = d.getDay();
+  d.setDate(d.getDate() + (day === 0 ? 0 : 7 - day)); // 本週日
+  return d.toISOString().slice(0, 10);
+})();
+
+const THIS_WEEK_REPORTS: Report[] = [
+  {
+    id: "r-thisweek-research",
+    dept: "投資研究部",
+    week: CURRENT_WEEK_LABEL,
+    author: "周世倫",
+    submittedAt: `${THIS_WEEK_SD} 16:42`,
+    cases: [
+      "• 田宮電機 Pre-A 輪盡調 (進度 65%) — 財報補件已第 4 週仍未到，已升級給林聿平協調對方財務長",
+      "• 牧野精機技術 DD 第二輪 — 量產良率數據工廠端整理中，預計本週五前到位",
+      "• 太洋證券法律意見書追蹤 — 外部律師事務所反覆要求補資料，鍾皓明已介入協調",
+      "• 駒田工業二次盡調 — 已完成商業模式驗證，客戶留存率訪談排程中",
+    ].join("\n"),
+    blockers: "田宮電機正式財報拖延 4 週嚴重影響投委會排程；太洋證券法律意見書也已 30 天未到，兩件都已達 P95+ 極高風險。",
+    needHelp: "需業開部林聿平協助田宮電機創辦人溝通；太洋證券建議董事長親自致電對方律所合夥人。",
+    nextWeek: "完成牧野精機技術 DD 報告初稿；推進駒田工業二次盡調收尾。",
+    keywords: ["田宮電機", "牧野精機", "太洋證券", "盡調", "Pre-A"],
+  },
+  {
+    id: "r-thisweek-biz",
+    dept: "業務開發部",
+    week: CURRENT_WEEK_LABEL,
+    author: "林聿平",
+    submittedAt: `${THIS_WEEK_SD} 17:15`,
+    cases: [
+      "• 西大阪鋼鐵 A 輪募資對齊 — 估值期待與市場行情仍有 30% 落差，本週與投研部開會收斂",
+      "• 東京中央銀行 NDA 條款 — 對方法務 3 點異議已回覆，等待最終確認 (進度 80%)",
+      "• 電腦雜技集團窗口重建 — 對方換 PM 三天未回，蔡明遠改用其他管道接觸中",
+      "• 帝國航空 CEO 會議 — 已改期 3 次，陳俊宏協調新時段",
+      "• 丸岡商工首次接洽簡報準備",
+    ].join("\n"),
+    blockers: "西大阪鋼鐵估值落差過大；電腦雜技集團窗口斷線已 20 天，恐失先機。",
+    needHelp: "西大阪鋼鐵估值缺口需投委會給予明確上下限指引；電腦雜技集團若再無回應，建議由 COO 層級致電。",
+    nextWeek: "完成東京中央銀行 NDA 簽署；推進西大阪鋼鐵估值共識。",
+    keywords: ["西大阪鋼鐵", "東京中央銀行", "電腦雜技集團", "NDA", "募資"],
+  },
+  {
+    id: "r-thisweek-asset",
+    dept: "資產管理部",
+    week: CURRENT_WEEK_LABEL,
+    author: "梁嘉芫",
+    submittedAt: `${THIS_WEEK_SD} 17:48`,
+    cases: [
+      "• 伊勢島飯店退場稅務優化方案 — 已備齊，等待董事會專案會議拍板 (進度 90%)",
+      "• 斯派拉爾投資契約初稿審閱 — 預計週五前完成",
+      "• 竹下金屬 ESG 風險評估 — 邱筱慧已啟動問卷收集",
+      "• 投組風險集中度季報 — Q1 報告草稿完成，正等投研部補充估值更新",
+    ].join("\n"),
+    blockers: "伊勢島飯店退場稅務方案董事會排程一直延後，已等 22 天。",
+    needHelp: "需董事長與 COO 確認伊勢島飯店專案會議時段。",
+    nextWeek: "完成斯派拉爾契約審閱；推進 ESG 評估收件。",
+    keywords: ["伊勢島飯店", "斯派拉爾", "竹下金屬", "退場", "ESG"],
+  },
+];
+
+export const SEED_REPORTS: Report[] = [...THIS_WEEK_REPORTS, ...buildReports()];
 
 // ===== 程序化產生交接單 =====
 function buildHandoffs(): Handoff[] {
