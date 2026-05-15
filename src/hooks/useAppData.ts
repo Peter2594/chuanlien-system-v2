@@ -76,11 +76,16 @@ export function useAppData() {
         const finalHistory   = (hist || []).length < 5 ? SEED_HISTORY  : hist;
         const finalMeetings  = (mh || []).length < 5   ? SEED_MEETING_HISTORY : mh;
 
+        // 員工不足 (< 15 人) 也視為舊資料，重置為完整 20 人
+        const finalEmployees = (emp || []).length < 15 ? SEED_EMPLOYEES : emp;
+        // 決策 / departments 同理
+        const finalDecisions = (d || []).length < 10 ? SEED_DECISIONS : d;
+
         setReports(finalReports);
         setHandoffs(finalHandoffs);
-        setDecisions(d);
+        setDecisions(finalDecisions);
         setBlockers(finalBlockers);
-        setEmployees(emp);
+        setEmployees(finalEmployees);
         setDepartments(deptRows);
         setUsers(userRows);
         setMeetingHistory(finalMeetings);

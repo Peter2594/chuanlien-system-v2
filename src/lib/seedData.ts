@@ -87,27 +87,50 @@ function buildReports(): Report[] {
     const rnd = seedRandom(wkNum * 137 + target.getFullYear());
     const seasons = seasonTopics(target);
 
+    // 各部門作者池 - 輪流寫週報讓所有員工都有負載資料
+    const researchAuthors = ["周世倫", "鍾皓明", "張偉", "李宥廷", "廖宜萱"];
+    const bizAuthors      = ["林聿平", "林欣逸", "蔡明遠", "楊雅雯", "陳俊宏"];
+    const assetAuthors    = ["梁嘉芫", "陳雅文", "蘇柏豪", "邱筱慧"];
+
     const depts = [
-      { dept: "投資研究部", author: "周世倫", key: "research", verbs: ["盡調", "估值", "產業分析", "競品比較", "財務模型"] },
-      { dept: "業務開發部", author: "林聿平", key: "biz",      verbs: ["接觸", "簽約", "NDA", "提案", "客戶開發"] },
-      { dept: "資產管理部", author: "梁嘉芫", key: "asset",    verbs: ["法遵審核", "投組季報", "稅務評估", "募資配置", "退場評估"] },
+      { dept: "投資研究部", author: researchAuthors[weeksAgo % researchAuthors.length], key: "research", verbs: ["盡調", "估值", "產業分析", "競品比較", "財務模型"] },
+      { dept: "業務開發部", author: bizAuthors[weeksAgo % bizAuthors.length],           key: "biz",      verbs: ["接觸", "簽約", "NDA", "提案", "客戶開發"] },
+      { dept: "資產管理部", author: assetAuthors[weeksAgo % assetAuthors.length],       key: "asset",    verbs: ["法遵審核", "投組季報", "稅務評估", "募資配置", "退場評估"] },
     ];
+
+    // 同事池：本部門其他人 (用於 mention)
+    const colleaguePool: Record<string, string[]> = {
+      research: researchAuthors,
+      biz:      bizAuthors,
+      asset:    assetAuthors,
+    };
 
     depts.forEach((d, j) => {
       const cases: string[] = [];
       const numCases = 2 + Math.floor(rnd() * 3);
       const used = new Set<string>();
+      const sameDept = colleaguePool[d.key].filter((n) => n !== d.author);
+
       for (let k = 0; k < numCases; k++) {
         const c = pick(caseRegistry, rnd);
         if (used.has(c.code)) continue;
         used.add(c.code);
         const verb = pick(d.verbs, rnd);
-        cases.push(`• ${c.code} ${verb}${rnd() > 0.7 ? `(進度 ${40 + Math.floor(rnd() * 50)}%)` : ""}`);
+        // 30% 機率提及一位同事 (共同負責)
+        const coWorker = (rnd() > 0.7 && sameDept.length) ? `（與 ${pick(sameDept, rnd)} 共同）` : "";
+        cases.push(`• ${c.code} ${verb}${coWorker}${rnd() > 0.7 ? `(進度 ${40 + Math.floor(rnd() * 50)}%)` : ""}`);
       }
       if (rnd() > 0.6) cases.push(`• ${pick(seasons, rnd)}相關工作`);
 
-      const blocker = rnd() > 0.45 ? pick(blockerPool[d.key], rnd) : "";
-      const help    = rnd() > 0.5  ? pick(helpPool[d.key], rnd)    : "";
+      // 卡點和需協助中也加入提及
+      let blocker = rnd() > 0.45 ? pick(blockerPool[d.key], rnd) : "";
+      if (blocker && sameDept.length && rnd() > 0.5) {
+        blocker += `（${pick(sameDept, rnd)} 已嘗試處理但需更高層介入）`;
+      }
+      let help = rnd() > 0.5 ? pick(helpPool[d.key], rnd) : "";
+      if (help && sameDept.length && rnd() > 0.6) {
+        help = `${pick(sameDept, rnd)}: ${help}`;
+      }
 
       const keywords = [...Array.from(used).slice(0, 3), pick(seasons, rnd)];
       if (rnd() > 0.6) keywords.push(pick(d.verbs, rnd));
