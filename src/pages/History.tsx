@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Search, Sparkles, ChevronDown } from "lucide-react";
+import { Search, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Card } from "../components/ui/Card";
 import { Pill } from "../components/ui/Pill";
@@ -109,16 +109,10 @@ export default function HistoryPage({ history }: Props) {
     <div className="max-w-5xl mx-auto pb-8">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center gap-2 mb-2">
-          <Sparkles size={12} className="text-blue-500" />
-          <span className="text-[11px] text-blue-500 tracking-[0.25em] font-bold">TF-IDF · COSINE SIMILARITY</span>
-        </div>
         <h1 className="text-2xl font-black text-slate-900 tracking-tight mb-2">
-          歷史智慧庫 · 共 {history.length} 筆累積案件
+          歷史案件搜尋 · 共 {history.length} 筆
         </h1>
-        <p className="text-sm text-slate-500">
-          打關鍵字，系統用 TF-IDF 計算相似度排序，過去同類案件 1 秒內就能找到。
-        </p>
+        <p className="text-sm text-slate-500">輸入關鍵字找過去類似案件。</p>
       </div>
 
       {/* 大搜尋框 */}
@@ -148,19 +142,6 @@ export default function HistoryPage({ history }: Props) {
           ))}
         </div>
       </Card>
-
-      {/* TF-IDF 透明度 hint */}
-      {q.trim() && hotTerms.length > 0 && (
-        <div className="mb-4 px-4 py-2 bg-blue-50 border border-blue-100 rounded-lg text-[11px] text-blue-700 flex items-center gap-2 flex-wrap">
-          <span className="font-bold tracking-wide">HIGH-IDF 切詞</span>
-          {hotTerms.map((t) => (
-            <span key={t.term} className="px-2 py-0.5 bg-white rounded font-mono">
-              {t.term} <span className="text-blue-400">{t.idf}</span>
-            </span>
-          ))}
-          <span className="ml-auto text-blue-500">← IDF 越高 = 區分力越強</span>
-        </div>
-      )}
 
       {/* 結果列表 */}
       <div className="text-xs text-slate-500 mb-3">

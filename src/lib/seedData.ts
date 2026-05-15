@@ -213,21 +213,65 @@ const daysFromNowIso = (n: number) => {
 };
 
 export const SEED_DECISIONS: Decision[] = [
+  // 執行中 (7 筆)
   { id: "d1", title: "A 新創 Pre-A 輪投資金額上限", content: "決議對 A 新創 Pre-A 輪投資上限為 3,000 萬，估值不得高於 4 億。",
     decidedBy: "投資委員會", decidedAt: daysAgoIso(9), dueDate: daysFromNowIso(5), assignedDept: "投資研究部",
     status: "執行中", linkedCases: ["C-2025-042"], notes: "需於期限前完成投資條件書草擬。" },
-  { id: "d2", title: "Q4 分潤機制檢討", content: "決議調整資產管理部 Q4 分潤比例，由 80/20 改為 75/25。",
-    decidedBy: "董事會", decidedAt: daysAgoIso(28), dueDate: daysAgoIso(8), assignedDept: "資產管理部",
-    status: "逾期", notes: "預期上線時程已延後。" },
   { id: "d3", title: "設立法遵專員職位", content: "因應法遵案件增加，董事會決議招募 1 位法遵專員。",
     decidedBy: "董事會", decidedAt: daysAgoIso(40), dueDate: daysFromNowIso(60), assignedDept: "營運與管理層",
-    status: "執行中", notes: "人事部已開始徵才流程。" },
+    status: "執行中", notes: "人事部已開始徵才流程，目前面試 3 位候選人。" },
+  { id: "d7", title: "Q4 投資組合季度報告", content: "決議於 Q4 結束前完成所有被投公司季度報告與估值更新。",
+    decidedBy: "投資委員會", decidedAt: daysAgoIso(20), dueDate: daysFromNowIso(15), assignedDept: "投資研究部",
+    status: "執行中", notes: "需與資管部協作整理財務資料。" },
+  { id: "d8", title: "C 標的二次盡調", content: "決議對 C 標的進行第二輪深度盡調，重點在客戶留存率與商業模式驗證。",
+    decidedBy: "投資委員會", decidedAt: daysAgoIso(15), dueDate: daysFromNowIso(10), assignedDept: "投資研究部",
+    status: "執行中", linkedCases: ["C-2025-058"] },
+  { id: "d9", title: "下季業務開發 KPI", content: "決議將下季新客戶接觸數提升至 12 家，加強對 FinTech 領域開發。",
+    decidedBy: "營運會議", decidedAt: daysAgoIso(12), dueDate: daysFromNowIso(45), assignedDept: "業務開發部",
+    status: "執行中" },
+  { id: "d10", title: "D 客戶 NDA 條款修訂", content: "決議接受 D 客戶提出的 NDA 修訂建議，由資管部完成最終版本。",
+    decidedBy: "投資委員會", decidedAt: daysAgoIso(7), dueDate: daysFromNowIso(3), assignedDept: "資產管理部",
+    status: "執行中", linkedCases: ["C-2025-048"] },
+  { id: "d11", title: "投組風險集中度檢討", content: "決議由資管部每季提交投組風險集中度報告，超過 25% 需提案分散。",
+    decidedBy: "董事會", decidedAt: daysAgoIso(30), dueDate: daysFromNowIso(20), assignedDept: "資產管理部",
+    status: "執行中" },
+
+  // 逾期 (4 筆)
+  { id: "d2", title: "Q4 分潤機制檢討", content: "決議調整資產管理部 Q4 分潤比例，由 80/20 改為 75/25。",
+    decidedBy: "董事會", decidedAt: daysAgoIso(28), dueDate: daysAgoIso(8), assignedDept: "資產管理部",
+    status: "逾期", notes: "預期 10/15 上線，目前實際延後中。" },
+  { id: "d12", title: "K 公司退場稅務優化方案", content: "決議完成 K 公司退場稅務試算與優化方案評估。",
+    decidedBy: "投資委員會", decidedAt: daysAgoIso(35), dueDate: daysAgoIso(12), assignedDept: "資產管理部",
+    status: "逾期", linkedCases: ["C-2025-039"], notes: "已等待管理層決議 5 天。" },
+  { id: "d13", title: "11 月 FinTech Summit 參展規劃", content: "決議由業開部負責 11 月 FinTech Summit 參展企劃。",
+    decidedBy: "營運會議", decidedAt: daysAgoIso(25), dueDate: daysAgoIso(5), assignedDept: "業務開發部",
+    status: "逾期", notes: "活動已開始，參展物資未到位。" },
+  { id: "d14", title: "L 標的法律意見書回覆", content: "決議由投研部協助 L 標的取得法律意見書。",
+    decidedBy: "投資委員會", decidedAt: daysAgoIso(42), dueDate: daysAgoIso(20), assignedDept: "投資研究部",
+    status: "逾期", linkedCases: ["C-2025-031"] },
+
+  // 已完成 (7 筆)
   { id: "d4", title: "年度預算追加 500 萬", content: "因應新案件量增加，決議追加 Q4 營運預算 500 萬。",
     decidedBy: "董事會", decidedAt: daysAgoIso(45), dueDate: daysAgoIso(30), assignedDept: "營運與管理層",
-    status: "已完成", completedAt: daysAgoIso(28), notes: "撥款已完成。" },
+    status: "已完成", completedAt: daysAgoIso(28), notes: "撥款已於 9/30 完成。" },
   { id: "d5", title: "暫停評估 Web3 類標的", content: "因應監管環境不明，決議暫停所有 Web3 類新案件深度盡調。",
     decidedBy: "投資委員會", decidedAt: daysAgoIso(35), dueDate: "即時生效", assignedDept: "投資研究部",
     status: "已完成", completedAt: daysAgoIso(34) },
+  { id: "d15", title: "員工年度健康檢查方案", content: "決議全體同仁年度健康檢查由公司補助，每人額度 5,000 元。",
+    decidedBy: "營運會議", decidedAt: daysAgoIso(60), dueDate: daysAgoIso(40), assignedDept: "營運與管理層",
+    status: "已完成", completedAt: daysAgoIso(38) },
+  { id: "d16", title: "P 公司 A 輪追加投資", content: "決議對既有投資 P 公司追加 A 輪投資 1,500 萬。",
+    decidedBy: "投資委員會", decidedAt: daysAgoIso(55), dueDate: daysAgoIso(35), assignedDept: "投資研究部",
+    status: "已完成", completedAt: daysAgoIso(32) },
+  { id: "d17", title: "新進員工 Onboarding 流程", content: "決議建立統一的新進人員報到流程，含 2 週系統訓練與 1 個月 mentor 制。",
+    decidedBy: "營運會議", decidedAt: daysAgoIso(70), dueDate: daysAgoIso(50), assignedDept: "營運與管理層",
+    status: "已完成", completedAt: daysAgoIso(48) },
+  { id: "d18", title: "Q3 投資組合估值更新", content: "決議完成所有被投公司 Q3 估值更新並提交董事會。",
+    decidedBy: "投資委員會", decidedAt: daysAgoIso(80), dueDate: daysAgoIso(60), assignedDept: "資產管理部",
+    status: "已完成", completedAt: daysAgoIso(58) },
+  { id: "d6", title: "K 公司初步退場時機", content: "決議啟動 K 公司退場評估，目標 6 個月內完成。",
+    decidedBy: "董事會", decidedAt: daysAgoIso(90), dueDate: daysAgoIso(75), assignedDept: "資產管理部",
+    status: "已完成", completedAt: daysAgoIso(72) },
 ];
 
 // ===== 卡點 (簡化) =====
@@ -258,32 +302,71 @@ export const SEED_BLOCKERS: Blocker[] = [
   },
 ];
 
-// ===== 歷史案件 (簡化 - 完整 53 筆會在後續批次中遷移) =====
+// ===== 歷史案件 (53 筆，按類別 + 解決天數分布) =====
+const HISTORY_DAYS_BY_CATEGORY: Record<string, number[]> = {
+  "法遵/合約":   [2, 3, 4, 5, 6, 7, 8, 11, 16, 24],
+  "資金/募資":   [1, 2, 3, 4, 5, 6, 9, 13, 22],
+  "資料/補件":   [2, 3, 3, 4, 5, 7, 10, 15, 28],
+  "跨部門/窗口": [1, 2, 2, 3, 4, 5, 8, 12, 19],
+  "決策/簽核":   [3, 4, 5, 6, 8, 12, 18, 31],
+  "時程/聯繫":   [1, 2, 3, 4, 5, 7, 10, 17],
+};
+
+const HISTORY_TITLES_BY_CATEGORY: Record<string, string[]> = {
+  "法遵/合約":   ["NDA 條款審閱", "投資契約審核", "法務意見回覆", "監管風險評估"],
+  "資金/募資":   ["募資規模確認", "資金配置試算", "預算追加評估"],
+  "資料/補件":   ["財報補件", "盡調資料收齊", "訪談紀錄整理", "資料格式校對"],
+  "跨部門/窗口": ["對接窗口確認", "部門資訊同步", "外部單位聯繫"],
+  "決策/簽核":   ["投資委員會決議", "條件書簽核", "董事會拍板", "追加投資核准"],
+  "時程/聯繫":   ["財務長行程安排", "會議排程確認", "外部窗口催促"],
+};
+
+const HISTORY_DEPTS = ["投資研究部", "業務開發部", "資產管理部"];
+
+const CATEGORY_INSIGHTS: Record<string, string[]> = {
+  "法遵/合約":   ["法遵類卡點平均需 7–8 天解決", "合約條款審閱需法務部門配合", "提前送件可縮短審閱等待時間"],
+  "資金/募資":   ["資金類卡點平均需 5–6 天解決", "預算追加需董事會決議，時程較長", "建議提前 2 週申請以保留緩衝"],
+  "資料/補件":   ["補件類卡點平均需 6–7 天解決", "財報補件延誤是最常見的盡調障礙", "建議在 LOI 階段即要求完整財務資料"],
+  "跨部門/窗口": ["跨部門協作平均需 4–5 天完成", "窗口對接若未明確指派易造成延誤", "建議每個案件設立單一對口人"],
+  "決策/簽核":   ["決策類卡點平均需 8–10 天解決", "投資委員會排程需提前一週確認", "備齊完整資料可顯著縮短審議時間"],
+  "時程/聯繫":   ["時程類卡點平均需 5–6 天解決", "創辦人/外部窗口聯繫困難是常見問題", "多管道聯繫並設定明確 deadline 可提高回應率"],
+};
+
 export const SEED_HISTORY: HistoryCase[] = (() => {
   const out: HistoryCase[] = [];
-  let id = 1;
-  BLOCKER_CATEGORIES.slice(0, 6).forEach((cat) => {
-    [2, 5, 9, 14, 22].forEach((days) => {
-      const weeksAgo = Math.floor(Math.random() * 30) + 4;
+  let bhId = 1;
+  Object.entries(HISTORY_DAYS_BY_CATEGORY).forEach(([catLabel, daysList]) => {
+    const titles = HISTORY_TITLES_BY_CATEGORY[catLabel] || [];
+    const insights = CATEGORY_INSIGHTS[catLabel] || [];
+    daysList.forEach((days, i) => {
+      const weeksAgo = Math.max(1, 42 - (18 + i));
       const cd = new Date(NOW);
       cd.setDate(cd.getDate() - weeksAgo * 7);
+      const dept = HISTORY_DEPTS[i % HISTORY_DEPTS.length];
+      const title = titles[i % titles.length] || `${catLabel} 案件`;
       const speed = days <= 3 ? "快速解決" : days <= 7 ? "正常解決" : days <= 14 ? "較慢解決" : "嚴重延誤";
       out.push({
-        id: `bh${id++}`,
-        title: `${cat.label}類案件 #${id}`,
+        id: `bh${bhId++}`,
+        title,
         date: `${cd.getFullYear()}/${String(cd.getMonth() + 1).padStart(2, "0")}/${String(cd.getDate()).padStart(2, "0")}`,
-        tags: [cat.label, "歷史案件", speed],
-        summary: `${cat.label}類卡點，歷時 ${days} 天完成解決。`,
-        owner: ["周世倫", "林聿平", "梁嘉芫"][id % 3],
-        handoffs: 1 + (id % 3),
+        tags: [catLabel, dept, speed],
+        summary: `${dept}處理的${catLabel}類卡點，歷時 ${days} 天完成解決。`,
+        owner: dept,
+        handoffs: 1 + (i % 3),
         outcome: `已解決 · ${days} 天`,
         detail: {
-          background: `本卡點屬於「${cat.label}」類別，主要關鍵字：${cat.keywords.slice(0, 3).join("、")}`,
-          process: `共歷時 ${days} 天完成解決。`,
+          background: `本卡點屬於「${catLabel}」類別，發生於約 ${weeksAgo} 週前，由 ${dept} 主責處理。`,
+          process: `共歷時 ${days} 天完成解決，期間涉及 ${1 + (i % 3)} 次跨部門協作。`,
           valuation: `解決時間：${days} 天`,
-          keyInsights: [`${cat.label}類卡點需要謹慎處理`],
-          result: `已成功解決，共花費 ${days} 天。`,
-          lessons: `本案處理${speed === "嚴重延誤" ? "時間較長，建議下次提前介入" : "效率良好"}。`,
+          keyInsights: insights,
+          result: days <= 5
+            ? "已成功解決，解決速度優於同類歷史中位數，可作為快速處理的參考案例。"
+            : days <= 14
+            ? "已成功解決，解決時間在正常範圍內。"
+            : "已成功解決，但解決時間偏長，建議檢討流程以避免類似延誤。",
+          lessons: days > 10
+            ? `本案處理時間較長（${days} 天），建議下次同類卡點在第 ${Math.ceil(days * 0.6)} 天時即升級處理層級。`
+            : "本案處理效率良好，相關處理模式值得在團隊內部分享。",
         },
       });
     });

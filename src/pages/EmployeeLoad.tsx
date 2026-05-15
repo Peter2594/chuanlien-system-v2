@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { Users, AlertTriangle, Heart } from "lucide-react";
+import { AlertTriangle, Heart } from "lucide-react";
 import { motion } from "motion/react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Card } from "../components/ui/Card";
 import { Modal } from "../components/ui/Modal";
 import { cn } from "../lib/utils";
@@ -40,20 +41,46 @@ export default function EmployeeLoadPage({ reports, handoffs, employees }: Props
     <div className="max-w-6xl mx-auto pb-8">
       {/* 一句話總結 */}
       <div className="mb-8">
-        <div className="text-[11px] text-red-500 tracking-[0.25em] font-bold mb-2">CONCENTRATION RISK</div>
         <h1 className="text-2xl font-black text-slate-900 tracking-tight mb-2">
           目前 <span className="text-red-500">{overload.length}</span> 位員工過載
         </h1>
-        <p className="text-sm text-slate-500">
-          加權模型：時間衰減 × 案件複雜度 × 跨部門中心性。點擊任一人查看詳情。
-        </p>
+        <p className="text-sm text-slate-500">點擊任一人查看詳情。</p>
       </div>
 
-      {/* 3 張 mini 統計 */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        <MiniStat label="過載人數" value={overload.length} color="text-red-500" hint={`占 ${Math.round((overload.length / loads.length) * 100)}%`} />
-        <MiniStat label="平均負載" value={avgScore.toFixed(1)} color="text-slate-700" hint="全公司中位數" />
-        <MiniStat label="閒置人數" value={loads.filter((l) => l.level === "idle").length} color="text-slate-400" hint="本週無案件記錄" />
+      {/* 3 張 mini 統計 + 部門對比 chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-8">
+        <div className="lg:col-span-2 grid grid-cols-3 gap-3">
+          <MiniStat label="過載人數" value={overload.length} color="text-red-500" hint={`占 ${Math.round((overload.length / loads.length) * 100)}%`} />
+          <MiniStat label="平均負載" value={avgScore.toFixed(1)} color="text-slate-700" hint="全公司均值" />
+          <MiniStat label="閒置人數" value={loads.filter((l) => l.level === "idle").length} color="text-slate-400" hint="本週無記錄" />
+        </div>
+
+        <Card className="p-5 lg:col-span-3">
+          <div className="text-[10px] font-bold tracking-wider text-slate-400 mb-3">各部門平均負載</div>
+          <div className="h-32">
+            <ResponsiveContainer>
+              <BarChart data={Object.entries(byDept).map(([d, list]) => ({
+                dept: d.replace("營運與管理層", "管理").replace("投資研究部", "投研").replace("業務開發部", "業開").replace("資產管理部", "資管"),
+                avg: +(list.reduce((s, e) => s + e.loadScore, 0) / list.length).toFixed(1),
+                count: list.length,
+              }))}>
+                <XAxis dataKey="dept" tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ borderRadius: 8, border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", fontSize: 11 }}
+                  formatter={(v: any) => [`${v} 分`, "平均負載"]}
+                />
+                <Bar dataKey="avg" radius={[6, 6, 0, 0]}>
+                  {Object.values(byDept).map((list, idx) => {
+                    const avg = list.reduce((s, e) => s + e.loadScore, 0) / list.length;
+                    const color = avg >= 25 ? "#ef4444" : avg >= 15 ? "#f59e0b" : "#10b981";
+                    return <Cell key={idx} fill={color} />;
+                  })}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
       </div>
 
       {/* 員工列表 - 按部門分組 */}

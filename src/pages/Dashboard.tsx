@@ -181,13 +181,11 @@ export default function Dashboard({
             Hero 1 · 加權員工負載
         ───────────────────────────────────── */}
         <HeroCard
-          algorithm="WEIGHTED LOAD MODEL"
-          algorithmDetail="Andy Grove × 時間衰減 × 分位數"
           icon={Users}
           accentColor="text-red-500"
           accentBg="bg-red-500"
-          title="加權員工負載"
-          subtitle="不是件數加總 · 是公司結構性風險"
+          title="員工負載"
+          subtitle="誰扛太重？誰閒置？"
           onClick={() => onNav("employees")}
         >
           <div className="flex items-baseline gap-3 mb-5">
@@ -250,13 +248,11 @@ export default function Dashboard({
             Hero 2 · TF-IDF 歷史智慧庫
         ───────────────────────────────────── */}
         <HeroCard
-          algorithm="TF-IDF + COSINE SIMILARITY"
-          algorithmDetail="中英 2-gram tokenize · 全文檢索"
           icon={Search}
           accentColor="text-blue-500"
           accentBg="bg-blue-500"
-          title="歷史智慧庫"
-          subtitle="把組織經驗變成可搜尋的資產"
+          title="歷史搜尋"
+          subtitle="過去類似案件怎麼處理？"
           onClick={() => onNav("history")}
         >
           <div className="flex items-baseline gap-3 mb-4">
@@ -302,13 +298,11 @@ export default function Dashboard({
             Hero 3 · 卡點分位數預警
         ───────────────────────────────────── */}
         <HeroCard
-          algorithm="EMPIRICAL PERCENTILE"
-          algorithmDetail="非常態分佈 · 同類經驗比較"
           icon={AlertCircle}
           accentColor="text-amber-500"
           accentBg="bg-amber-500"
-          title="卡點分位數預警"
-          subtitle="不是 SLA 是「歷史同類拖多久」"
+          title="卡點分析"
+          subtitle="哪些案件拖太久了？"
           onClick={() => onNav("analytics")}
         >
           <div className="flex items-baseline gap-3 mb-5">
@@ -411,8 +405,6 @@ export default function Dashboard({
 // HeroCard - 三大亮點專用大卡
 // ============================================================
 interface HeroCardProps {
-  algorithm: string;
-  algorithmDetail: string;
   icon: React.ComponentType<{ size?: number; className?: string }>;
   accentColor: string;
   accentBg: string;
@@ -423,7 +415,7 @@ interface HeroCardProps {
 }
 
 function HeroCard({
-  algorithm, algorithmDetail, icon: Icon, accentColor, accentBg, title, subtitle, children, onClick,
+  icon: Icon, accentColor, accentBg, title, subtitle, children, onClick,
 }: HeroCardProps) {
   return (
     <motion.div
@@ -433,28 +425,16 @@ function HeroCard({
       onClick={onClick}
       className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm hover:shadow-lg transition-all cursor-pointer relative overflow-hidden group"
     >
-      {/* 頂部演算法標記 (亮點) */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-current to-transparent opacity-30" />
-      <div className="flex items-center gap-2 mb-1">
-        <Sparkles size={11} className={accentColor} />
-        <span className={cn("text-[10px] font-black tracking-[0.15em]", accentColor)}>
-          {algorithm}
-        </span>
-      </div>
-      <div className="text-[10px] text-slate-400 mb-4 ml-4 font-mono italic">
-        {algorithmDetail}
-      </div>
-
       {/* 標題列 */}
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-start justify-between mb-5">
         <div>
-          <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-            <Icon size={18} className={accentColor} />
+          <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2 mb-1">
+            <Icon size={20} className={accentColor} />
             {title}
           </h3>
-          <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">{subtitle}</p>
+          <p className="text-xs text-slate-500 leading-relaxed">{subtitle}</p>
         </div>
-        <div className={cn("p-2 rounded-xl group-hover:scale-110 transition", accentBg.replace("bg-", "bg-") + "/10")}>
+        <div className={cn("p-2 rounded-xl group-hover:scale-110 transition", accentBg + "/10")}>
           <ArrowUpRight size={16} className={accentColor} />
         </div>
       </div>

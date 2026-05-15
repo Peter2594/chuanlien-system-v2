@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { AlertCircle, Sparkles, ChevronDown } from "lucide-react";
+import { AlertCircle, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Card } from "../components/ui/Card";
 import { cn } from "../lib/utils";
 import { BLOCKER_CATEGORIES } from "../lib/constants";
@@ -50,16 +51,10 @@ export default function BlockerAnalyticsPage({ blockers, history }: Props) {
     <div className="max-w-6xl mx-auto pb-8">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center gap-2 mb-2">
-          <Sparkles size={12} className="text-amber-500" />
-          <span className="text-[11px] text-amber-500 tracking-[0.25em] font-bold">EMPIRICAL PERCENTILE</span>
-        </div>
         <h1 className="text-2xl font-black text-slate-900 tracking-tight mb-2">
-          卡點分位數預警 · 共 {activeBlockers.length} 筆活躍
+          卡點分析 · 共 {activeBlockers.length} 筆活躍
         </h1>
-        <p className="text-sm text-slate-500">
-          直接拿歷史同類比較：「目前已卡 N 天，比歷史 X% 都久」。比 SLA 更貼真實經驗。
-        </p>
+        <p className="text-sm text-slate-500">點分類看歷史案例，點卡點看處理建議。</p>
       </div>
 
       {/* 活躍卡點 - 最嚴重的浮在上面 */}
@@ -159,6 +154,31 @@ export default function BlockerAnalyticsPage({ blockers, history }: Props) {
           </div>
         </div>
       )}
+
+      {/* 類別平均解決天數 chart */}
+      <Card className="p-5 mb-6">
+        <div className="text-[10px] font-bold tracking-wider text-slate-400 mb-1">各類別平均解決天數</div>
+        <div className="text-xs text-slate-500 mb-3">越長表示這類卡點通常越棘手</div>
+        <div className="h-44">
+          <ResponsiveContainer>
+            <BarChart data={categorySummary.map((c) => ({
+              cat: c.label,
+              avg: +c.mean.toFixed(1),
+              color: c.color,
+            }))} layout="vertical" margin={{ left: 20 }}>
+              <XAxis type="number" tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} />
+              <YAxis dataKey="cat" type="category" tick={{ fontSize: 11, fill: "#475569" }} width={90} axisLine={false} tickLine={false} />
+              <Tooltip
+                contentStyle={{ borderRadius: 8, border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", fontSize: 11 }}
+                formatter={(v: any) => [`${v} 天`, "平均"]}
+              />
+              <Bar dataKey="avg" radius={[0, 6, 6, 0]}>
+                {categorySummary.map((c, i) => (<Cell key={i} fill={c.color} />))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
 
       {/* 各類別統計 - 卡片網格 */}
       <div className="mb-4">

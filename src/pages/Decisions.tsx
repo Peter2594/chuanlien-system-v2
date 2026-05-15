@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { Gavel, Plus, Check, Trash2, CheckCircle2 } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Plus, Check, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
@@ -33,6 +34,15 @@ export default function DecisionsPage({ decisions, setDecisions, departments, us
   const inProgress = decisions.filter((d) => d.status === "執行中");
   const done      = decisions.filter((d) => d.status === "已完成");
 
+  const deptDistribution = useMemo(() => {
+    const m: Record<string, number> = {};
+    decisions.forEach((d) => {
+      const short = d.assignedDept.replace("營運與管理層", "管理").replace("投資研究部", "投研").replace("業務開發部", "業開").replace("資產管理部", "資管");
+      m[short] = (m[short] || 0) + 1;
+    });
+    return Object.entries(m).map(([dept, count]) => ({ dept, count }));
+  }, [decisions]);
+
   const markDone = (id: string) => {
     setDecisions((prev) => prev.map((d) =>
       d.id === id ? { ...d, status: "已完成", completedAt: today() } : d,
@@ -60,11 +70,63 @@ export default function DecisionsPage({ decisions, setDecisions, departments, us
         </Button>
       </div>
 
-      {/* 3 欄統計 */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        <StatCard label="逾期" count={overdue.length} status="逾期" />
-        <StatCard label="執行中" count={inProgress.length} status="執行中" />
-        <StatCard label="已完成" count={done.length} status="已完成" />
+      {/* 3 欄統計 + 圓餅 + 部門 bar */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
+        {/* 左：3 個狀態統計 */}
+        <div className="grid grid-cols-3 gap-3 lg:col-span-1">
+          <StatCard label="逾期"   count={overdue.length}    status="逾期" />
+          <StatCard label="執行中" count={inProgress.length} status="執行中" />
+          <StatCard label="已完成" count={done.length}       status="已完成" />
+        </div>
+
+        {/* 中：圓餅 */}
+        <Card className="p-5 flex items-center gap-4">
+          <div className="w-32 h-32 shrink-0">
+            <ResponsiveContainer>
+              <PieChart>
+                <Pie
+                  data={[
+                    { name: "執行中", value: inProgress.length, color: "#3b82f6" },
+                    { name: "逾期",   value: overdue.length,   color: "#ef4444" },
+                    { name: "已完成", value: done.length,      color: "#10b981" },
+                  ]}
+                  innerRadius={32}
+                  outerRadius={56}
+                  dataKey="value"
+                  startAngle={90}
+                  endAngle={-270}
+                >
+                  <Cell fill="#3b82f6" />
+                  <Cell fill="#ef4444" />
+                  <Cell fill="#10b981" />
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="text-xs space-y-1.5">
+            <div className="text-[10px] font-bold tracking-wider text-slate-400 mb-2">STATUS BREAKDOWN</div>
+            <Legend dot="bg-blue-500"    label="執行中" value={inProgress.length} />
+            <Legend dot="bg-red-500"     label="逾期"   value={overdue.length} />
+            <Legend dot="bg-emerald-500" label="已完成" value={done.length} />
+          </div>
+        </Card>
+
+        {/* 右：部門 bar */}
+        <Card className="p-5">
+          <div className="text-[10px] font-bold tracking-wider text-slate-400 mb-3">指派部門分布</div>
+          <div className="h-32">
+            <ResponsiveContainer>
+              <BarChart data={deptDistribution}>
+                <XAxis dataKey="dept" tick={{ fontSize: 9, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                <YAxis hide />
+                <Tooltip
+                  contentStyle={{ borderRadius: 8, border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", fontSize: 11 }}
+                />
+                <Bar dataKey="count" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
       </div>
 
       {/* 三組列表 */}
@@ -151,6 +213,16 @@ export default function DecisionsPage({ decisions, setDecisions, departments, us
         }}
         userProfile={userProfile}
       />
+    </div>
+  );
+}
+
+function Legend({ dot, label, value }: { dot: string; label: string; value: number }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className={cn("w-2 h-2 rounded-full", dot)} />
+      <span className="text-slate-500 w-12">{label}</span>
+      <span className="font-bold text-slate-900">{value}</span>
     </div>
   );
 }
