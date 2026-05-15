@@ -17,14 +17,20 @@ export default function Login() {
     try {
       await login(email, password);
     } catch (err: any) {
-      let msg = "登入失敗，請檢查帳號密碼";
       const code = err?.code || "";
-      if (code === "auth/user-not-found") msg = "找不到此帳號";
-      else if (code === "auth/wrong-password") msg = "密碼錯誤";
-      else if (code === "auth/invalid-email") msg = "電子郵件格式不正確";
-      else if (code === "auth/invalid-credential") msg = "帳號或密碼錯誤";
-      else if (code === "auth/too-many-requests") msg = "嘗試次數過多，請稍後再試";
+      const fullMsg = err?.message || String(err);
+      console.error("[Login Error]", code, fullMsg, err);
+      let msg = `登入失敗：${code || "未知錯誤"}`;
+      if (code === "auth/user-not-found")           msg = "找不到此帳號";
+      else if (code === "auth/wrong-password")      msg = "密碼錯誤";
+      else if (code === "auth/invalid-email")       msg = "電子郵件格式不正確";
+      else if (code === "auth/invalid-credential")  msg = "帳號或密碼錯誤";
+      else if (code === "auth/too-many-requests")   msg = "嘗試次數過多，請稍後再試";
       else if (code === "auth/network-request-failed") msg = "網路連線異常";
+      else if (code === "auth/api-key-not-valid")   msg = "Firebase 設定錯誤：API key 無效（請在 Vercel 設定 VITE_FIREBASE_* 環境變數）";
+      else if (code === "auth/unauthorized-domain") msg = "此網域未授權（Firebase Console 加入網域）";
+      else if (code === "auth/operation-not-allowed") msg = "Email/密碼登入未啟用（Firebase Console 啟用）";
+      else if (code === "auth/configuration-not-found") msg = "Firebase Auth 未設定（請先啟用 Email/Password 登入方式）";
       setError(msg);
     } finally {
       setLoading(false);
