@@ -66,20 +66,20 @@ export function useAppData() {
           fetchDocumentCollection<HistoryCase>("history", SEED_HISTORY),
         ]);
 
-        // 偵測舊資料：若雲端 reports 含「第 N 週」字樣 或筆數少於最新 SEED → 重置
+        // 偵測「明顯壞掉的」舊版 / 空資料才重置，保護使用者實際輸入
+        // 規則: 含舊「第 N 週」格式 OR 完全空 (< 10 筆)
         const hasOldFormat = (r || []).some((x: any) => /第\s*\d+\s*週/.test(String(x.week || "")));
-        const reportsLow = (r || []).length < SEED_REPORTS.length * 0.8;
-        const handoffsLow = (h || []).length < SEED_HANDOFFS.length * 0.8;
-        const finalReports   = (hasOldFormat || reportsLow) ? SEED_REPORTS : r;
-        const finalHandoffs  = handoffsLow ? SEED_HANDOFFS : h;
+        const reportsEmpty = (r || []).length < 10;
+        const handoffsEmpty = (h || []).length < 10;
+        const finalReports   = (hasOldFormat || reportsEmpty) ? SEED_REPORTS : r;
+        const finalHandoffs  = handoffsEmpty ? SEED_HANDOFFS : h;
         const finalBlockers  = (b || []).length === 0  ? SEED_BLOCKERS : b;
         const finalHistory   = (hist || []).length < 5 ? SEED_HISTORY  : hist;
         const finalMeetings  = (mh || []).length < 5   ? SEED_MEETING_HISTORY : mh;
 
-        // 員工不足 (< 15 人) 也視為舊資料，重置為完整 20 人
-        const finalEmployees = (emp || []).length < 15 ? SEED_EMPLOYEES : emp;
-        // 決策 / departments 同理
-        const finalDecisions = (d || []).length < 10 ? SEED_DECISIONS : d;
+        // 員工 / 決策也只在「空」時補進 SEED (避免覆蓋使用者編輯)
+        const finalEmployees = (emp || []).length === 0 ? SEED_EMPLOYEES : emp;
+        const finalDecisions = (d || []).length === 0 ? SEED_DECISIONS : d;
 
         setReports(finalReports);
         setHandoffs(finalHandoffs);
