@@ -70,7 +70,8 @@ const helpPool: Record<string, string[]> = {
 
 function buildReports(): Report[] {
   const out: Report[] = [];
-  const targetStart = new Date(2025, 5, 1);
+  // 回溯到 2024 年 9 月，產生 ~80 週的歷史資料 (× 3 部門 = ~240 筆)
+  const targetStart = new Date(2024, 8, 1);
   const oldestRequired = Math.ceil((+NOW - +targetStart) / (86400000 * 7));
 
   for (let weeksAgo = 1; weeksAgo <= oldestRequired; weeksAgo++) {
@@ -161,11 +162,12 @@ function buildHandoffs(): Handoff[] {
   const statuses: Handoff["status"][] = ["已簽收", "已簽收", "已簽收", "已簽收", "待簽收"];
 
   let id = 100;
-  for (let weeksAgo = 1; weeksAgo <= 49; weeksAgo++) {
+  // 回溯到 ~80 週前，每週 1-2 筆 = ~150 筆
+  for (let weeksAgo = 1; weeksAgo <= 80; weeksAgo++) {
     const target = new Date();
     target.setDate(target.getDate() - weeksAgo * 7);
     const rnd = seedRandom(weeksAgo * 211 + 17);
-    const num = rnd() > 0.4 ? 2 : 1;
+    const num = rnd() > 0.35 ? 2 : 1;
     for (let i = 0; i < num; i++) {
       const pair = pick(deptPairs, rnd);
       const c = pick(caseTypes, rnd);

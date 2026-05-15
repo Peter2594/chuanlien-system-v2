@@ -3,6 +3,8 @@ import { AlertCircle, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Card } from "../components/ui/Card";
+import { Modal } from "../components/ui/Modal";
+import { Pill } from "../components/ui/Pill";
 import { cn } from "../lib/utils";
 import { BLOCKER_CATEGORIES } from "../lib/constants";
 import { analyzeBlockerRecord, stats } from "../lib/algorithms";
@@ -16,6 +18,7 @@ interface Props {
 export default function BlockerAnalyticsPage({ blockers, history }: Props) {
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [viewCase, setViewCase] = useState<HistoryCase | null>(null);
 
   // 各類別統計
   const categorySummary = useMemo(() => {
@@ -227,19 +230,76 @@ export default function BlockerAnalyticsPage({ blockers, history }: Props) {
                   {selectedCatData.label} · {selectedCatData.items.length} 筆歷史案例
                 </h4>
               </div>
-              <div className="space-y-2">
-                {selectedCatData.items.slice(0, 8).map((item) => (
-                  <div key={item.id} className="flex items-center gap-3 py-2 border-b border-slate-100 last:border-0 text-xs">
-                    <span className="text-slate-400 font-mono shrink-0 w-20">{item.date}</span>
-                    <span className="flex-1 truncate text-slate-700">{item.title}</span>
+              <div className="space-y-1">
+                {selectedCatData.items.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setViewCase(item)}
+                    className="w-full flex items-center gap-3 py-2.5 px-3 -mx-3 rounded-lg hover:bg-amber-50/60 border-b border-slate-100 last:border-0 text-xs transition group"
+                  >
+                    <span className="text-slate-400 font-mono shrink-0 w-20 text-left">{item.date}</span>
+                    <span className="flex-1 truncate text-slate-700 text-left group-hover:text-slate-900 font-medium">{item.title}</span>
                     <span className="text-amber-600 font-bold shrink-0">{item.outcome}</span>
-                  </div>
+                    <ChevronDown size={12} className="text-slate-300 -rotate-90 group-hover:translate-x-0.5 transition" />
+                  </button>
                 ))}
               </div>
             </Card>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* 案件詳情 Modal */}
+      <Modal open={!!viewCase} onClose={() => setViewCase(null)}
+        title={viewCase?.title}
+        subtitle={viewCase && `${viewCase.date} · ${viewCase.owner} · ${viewCase.outcome}`}
+        maxWidth={620}>
+        {viewCase && (
+          <div className="space-y-3 text-xs leading-relaxed">
+            <div className="flex flex-wrap gap-1.5">
+              {viewCase.tags.map((t) => <Pill key={t} tone="purple">{t}</Pill>)}
+            </div>
+            {viewCase.detail?.background && (
+              <DetailField label="案件背景" value={viewCase.detail.background} />
+            )}
+            {viewCase.detail?.process && (
+              <DetailField label="處理過程" value={viewCase.detail.process} />
+            )}
+            {viewCase.detail?.valuation && (
+              <DetailField label="估值與條件" value={viewCase.detail.valuation} />
+            )}
+            {viewCase.detail?.keyInsights && viewCase.detail.keyInsights.length > 0 && (
+              <div>
+                <div className="text-[10px] text-slate-400 font-bold tracking-wider mb-1.5">關鍵洞察</div>
+                <div className="bg-violet-50 rounded-lg p-3 text-violet-800 space-y-1">
+                  {viewCase.detail.keyInsights.map((k, i) => <div key={i}>• {k}</div>)}
+                </div>
+              </div>
+            )}
+            {viewCase.detail?.result && (
+              <div>
+                <div className="text-[10px] text-slate-400 font-bold tracking-wider mb-1.5">結果</div>
+                <div className="bg-emerald-50 text-emerald-800 rounded-lg p-3">{viewCase.detail.result}</div>
+              </div>
+            )}
+            {viewCase.detail?.lessons && (
+              <div>
+                <div className="text-[10px] text-slate-400 font-bold tracking-wider mb-1.5">💡 本案經驗</div>
+                <div className="italic text-slate-500 leading-relaxed">{viewCase.detail.lessons}</div>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+}
+
+function DetailField({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-[10px] text-slate-400 font-bold tracking-wider mb-1.5">{label}</div>
+      <div className="bg-slate-50 rounded-lg p-3 text-slate-700 leading-relaxed">{value}</div>
     </div>
   );
 }

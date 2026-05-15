@@ -66,11 +66,12 @@ export function useAppData() {
           fetchDocumentCollection<HistoryCase>("history", SEED_HISTORY),
         ]);
 
-        // 偵測舊資料：若雲端 reports 含「第 N 週」字樣 → 重置
+        // 偵測舊資料：若雲端 reports 含「第 N 週」字樣 或筆數少於最新 SEED → 重置
         const hasOldFormat = (r || []).some((x: any) => /第\s*\d+\s*週/.test(String(x.week || "")));
-        const tooFew = (r || []).length < 30;
-        const finalReports   = (hasOldFormat || tooFew) ? SEED_REPORTS : r;
-        const finalHandoffs  = (h || []).length < 30   ? SEED_HANDOFFS : h;
+        const reportsLow = (r || []).length < SEED_REPORTS.length * 0.8;
+        const handoffsLow = (h || []).length < SEED_HANDOFFS.length * 0.8;
+        const finalReports   = (hasOldFormat || reportsLow) ? SEED_REPORTS : r;
+        const finalHandoffs  = handoffsLow ? SEED_HANDOFFS : h;
         const finalBlockers  = (b || []).length === 0  ? SEED_BLOCKERS : b;
         const finalHistory   = (hist || []).length < 5 ? SEED_HISTORY  : hist;
         const finalMeetings  = (mh || []).length < 5   ? SEED_MEETING_HISTORY : mh;
