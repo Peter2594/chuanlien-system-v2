@@ -345,31 +345,113 @@ export const SEED_DECISIONS: Decision[] = [
     status: "已完成", completedAt: daysAgoIso(72) },
 ];
 
-// ===== 卡點 (簡化) =====
+// ===== 卡點 =====
+// 各類別歷史 P75 ≈ 7-12 天，P90 ≈ 14-22 天，P95 ≈ 18-28 天
+// 故 currentDays:
+//   28+ → critical (P95+)、20+ → high、10+ → medium、其餘 normal
 export const SEED_BLOCKERS: Blocker[] = [
+  // === critical (P95+) ===
   {
     id: "b-1", title: "田宮電機財務資料尚未收齊",
-    description: "創辦人提供之 2024 年度財報為簡化版，需正式版才能進行估值。",
+    description: "創辦人提供之 2024 年度財報為簡化版，正式版催了 4 週仍未到，盡調卡關。",
     dept: "投資研究部", owner: "周世倫", category: "資料/補件",
-    status: "open", createdAt: daysAgoIso(14), updatedAt: daysAgoIso(2),
+    status: "open", createdAt: daysAgoIso(32), updatedAt: daysAgoIso(2),
     weekId: CURRENT_WEEK_LABEL, caseId: "田宮電機",
     relatedDepartments: ["業務開發部"],
   },
   {
-    id: "b-2", title: "東京中央銀行 NDA 條款有異議",
-    description: "東京中央銀行法務對 NDA 條款有 3 點異議，已轉給資管部審閱中。",
-    dept: "業務開發部", owner: "林聿平", category: "法遵/合約",
-    status: "open", createdAt: daysAgoIso(5), updatedAt: daysAgoIso(1),
+    id: "b-2", title: "太洋證券法律意見書遲未送達",
+    description: "外部律師事務所反覆要求補資料,實際出件比預估晚 3 週,影響投委會決議。",
+    dept: "投資研究部", owner: "鍾皓明", category: "法遵/合約",
+    status: "open", createdAt: daysAgoIso(30), updatedAt: daysAgoIso(3),
+    weekId: CURRENT_WEEK_LABEL, caseId: "太洋證券",
+    relatedDepartments: ["資產管理部"],
+  },
+
+  // === high (P90+) ===
+  {
+    id: "b-3", title: "伊勢島飯店退場稅務等待管理層決議",
+    description: "退場稅務優化方案已備齊,需董事會專案會議拍板,排程一直延後。",
+    dept: "資產管理部", owner: "梁嘉芫", category: "決策/簽核",
+    status: "open", createdAt: daysAgoIso(22), updatedAt: daysAgoIso(1),
+    weekId: CURRENT_WEEK_LABEL, caseId: "伊勢島飯店",
+    relatedDepartments: ["營運與管理層"],
+  },
+  {
+    id: "b-4", title: "西大阪鋼鐵 A 輪募資金額待定",
+    description: "創辦人對估值期待和市場行情有 30% 落差,業開部與投研部對齊中。",
+    dept: "業務開發部", owner: "林聿平", category: "資金/募資",
+    status: "open", createdAt: daysAgoIso(21), updatedAt: daysAgoIso(2),
+    weekId: CURRENT_WEEK_LABEL, caseId: "西大阪鋼鐵",
+    relatedDepartments: ["投資研究部"],
+  },
+  {
+    id: "b-5", title: "電腦雜技集團跨部門對接窗口未定",
+    description: "對方換了 PM,新窗口尚未指派,Slack 群組三天無回應。",
+    dept: "業務開發部", owner: "蔡明遠", category: "跨部門/窗口",
+    status: "open", createdAt: daysAgoIso(20), updatedAt: daysAgoIso(2),
+    weekId: CURRENT_WEEK_LABEL, caseId: "電腦雜技集團",
+    relatedDepartments: ["投資研究部"],
+  },
+
+  // === medium (P75+) ===
+  {
+    id: "b-6", title: "東京中央銀行 NDA 條款有異議",
+    description: "對方法務對 NDA 條款有 3 點異議,資管部審閱中,預計本週回覆。",
+    dept: "業務開發部", owner: "楊雅雯", category: "法遵/合約",
+    status: "open", createdAt: daysAgoIso(13), updatedAt: daysAgoIso(1),
     weekId: CURRENT_WEEK_LABEL, caseId: "東京中央銀行",
     relatedDepartments: ["資產管理部"],
   },
   {
-    id: "b-3", title: "伊勢島飯店退場稅務等待管理層決議",
-    description: "伊勢島飯店退場稅務優化方案需董事會決議才能繼續。",
-    dept: "資產管理部", owner: "梁嘉芫", category: "決策/簽核",
-    status: "open", createdAt: daysAgoIso(8), updatedAt: daysAgoIso(1),
-    weekId: CURRENT_WEEK_LABEL, caseId: "伊勢島飯店",
-    relatedDepartments: ["營運與管理層"],
+    id: "b-7", title: "牧野精機技術盡調報告補件",
+    description: "技術 DD 第二輪需要量產良率數據,工廠端整理中。",
+    dept: "投資研究部", owner: "李宥廷", category: "資料/補件",
+    status: "open", createdAt: daysAgoIso(12), updatedAt: daysAgoIso(1),
+    weekId: CURRENT_WEEK_LABEL, caseId: "牧野精機",
+    relatedDepartments: ["業務開發部"],
+  },
+  {
+    id: "b-8", title: "帝國航空創辦人會議改期 3 次",
+    description: "對方 CEO 行程滿,業開部協調新時段中。",
+    dept: "業務開發部", owner: "陳俊宏", category: "時程/聯繫",
+    status: "open", createdAt: daysAgoIso(11), updatedAt: daysAgoIso(0),
+    weekId: CURRENT_WEEK_LABEL, caseId: "帝國航空",
+    relatedDepartments: [],
+  },
+
+  // === normal ===
+  {
+    id: "b-9", title: "白水銀行徵信報告等待",
+    description: "已送件,預計 5 個工作天回覆,目前正常等待中。",
+    dept: "投資研究部", owner: "張偉", category: "資料/補件",
+    status: "open", createdAt: daysAgoIso(4), updatedAt: daysAgoIso(0),
+    weekId: CURRENT_WEEK_LABEL, caseId: "白水銀行",
+    relatedDepartments: [],
+  },
+  {
+    id: "b-10", title: "斯派拉爾投資契約初稿審閱",
+    description: "資管部審閱中,預計週五前完成,流程內。",
+    dept: "資產管理部", owner: "陳雅文", category: "法遵/合約",
+    status: "open", createdAt: daysAgoIso(3), updatedAt: daysAgoIso(0),
+    weekId: CURRENT_WEEK_LABEL, caseId: "斯派拉爾",
+    relatedDepartments: ["投資研究部"],
+  },
+  {
+    id: "b-11", title: "竹下金屬 ESG 風險評估啟動",
+    description: "本週剛啟動 ESG 評估,資管部正在收集問卷。",
+    dept: "資產管理部", owner: "邱筱慧", category: "資料/補件",
+    status: "open", createdAt: daysAgoIso(2), updatedAt: daysAgoIso(0),
+    weekId: CURRENT_WEEK_LABEL, caseId: "竹下金屬",
+    relatedDepartments: [],
+  },
+  {
+    id: "b-12", title: "丸岡商工首次接洽簡報準備",
+    description: "業開部準備首次提案資料,進度正常。",
+    dept: "業務開發部", owner: "林欣逸", category: "時程/聯繫",
+    status: "open", createdAt: daysAgoIso(2), updatedAt: daysAgoIso(0),
+    weekId: CURRENT_WEEK_LABEL, caseId: "丸岡商工",
+    relatedDepartments: [],
   },
 ];
 

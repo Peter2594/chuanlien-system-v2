@@ -15,12 +15,22 @@ interface Props {
   history: HistoryCase[];
 }
 
+type RiskLevel = "critical" | "high" | "medium" | "normal";
+
+const RISK_META: Record<RiskLevel, { label: string; color: string; ring: string; bg: string; text: string; dot: string }> = {
+  critical: { label: "極高風險", color: "bg-red-500",     ring: "ring-red-300",     bg: "bg-red-50",     text: "text-red-600",     dot: "bg-red-500" },
+  high:     { label: "高風險",   color: "bg-amber-500",   ring: "ring-amber-300",   bg: "bg-amber-50",   text: "text-amber-600",   dot: "bg-amber-500" },
+  medium:   { label: "關注中",   color: "bg-blue-500",    ring: "ring-blue-300",    bg: "bg-blue-50",    text: "text-blue-600",    dot: "bg-blue-500" },
+  normal:   { label: "正常",     color: "bg-emerald-500", ring: "ring-emerald-300", bg: "bg-emerald-50", text: "text-emerald-600", dot: "bg-emerald-500" },
+};
+
 export default function BlockerAnalyticsPage({ blockers, history }: Props) {
+  const [selectedRisk, setSelectedRisk] = useState<RiskLevel | null>(null);
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [viewCase, setViewCase] = useState<HistoryCase | null>(null);
 
-  // 各類別統計（用 history）
+  // 各類別統計
   const categorySummary = useMemo(() => {
     return BLOCKER_CATEGORIES.map((cat) => {
       const items = history.filter((h) => (h.tags || []).includes(cat.label));
@@ -40,7 +50,7 @@ export default function BlockerAnalyticsPage({ blockers, history }: Props) {
     }).sort((a, b) => b.mean - a.mean);
   }, [history]);
 
-  // 活躍卡點（傳入 history 解決樣本不足問題）
+  // 活躍卡點
   const activeBlockers = useMemo(() => {
     return blockers
       .filter((b) => b.status !== "resolved")
@@ -48,152 +58,199 @@ export default function BlockerAnalyticsPage({ blockers, history }: Props) {
       .sort((a, b) => (b.percentile || 0) - (a.percentile || 0));
   }, [blockers, history]);
 
-  const selectedCatData = categorySummary.find((c) => c.key === selectedCat);
-
-  // 風險統計
-  const riskCounts = {
+  const riskCounts: Record<RiskLevel, number> = {
     critical: activeBlockers.filter((b) => b.level === "critical").length,
     high:     activeBlockers.filter((b) => b.level === "high").length,
     medium:   activeBlockers.filter((b) => b.level === "medium").length,
     normal:   activeBlockers.filter((b) => b.level === "normal").length,
   };
 
+  const filteredBlockers = selectedRisk
+    ? activeBlockers.filter((b) => b.level === selectedRisk)
+    : [];
+
+  const selectedCatData = categorySummary.find((c) => c.key === selectedCat);
+
   return (
     <div className="max-w-6xl mx-auto pb-12 px-1">
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-8">
         <h1 className="text-3xl font-black text-slate-900 tracking-tight">卡點分析</h1>
-        <p className="text-sm text-slate-500 mt-1">點分類看歷史案例，點卡點看處理建議。</p>
+        <p className="text-sm text-slate-500 mt-1">
+          共 <strong className="text-slate-700">{activeBlockers.length}</strong> 筆活躍卡點 · 點下方風險區塊看詳細
+        </p>
       </div>
 
-      {/* 風險摘要列 */}
-      <div className="grid grid-cols-4 gap-3 mb-8">
-        <RiskTile label="極高風險" value={riskCounts.critical} color="bg-red-500"     textColor="text-red-600" />
-        <RiskTile label="高風險"   value={riskCounts.high}     color="bg-amber-500"   textColor="text-amber-600" />
-        <RiskTile label="關注中"   value={riskCounts.medium}   color="bg-blue-500"    textColor="text-blue-600" />
-        <RiskTile label="正常"     value={riskCounts.normal}   color="bg-emerald-500" textColor="text-emerald-600" />
+      {/* 大型風險摘要 - 點擊展開 */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+        {(Object.keys(RISK_META) as RiskLevel[]).map((level) => {
+          const meta = RISK_META[level];
+          const count = riskCounts[level];
+          const isSelected = selectedRisk === level;
+          const isDisabled = count === 0;
+          return (
+            <motion.button
+              key={level}
+              whileHover={!isDisabled ? { y: -2 } : {}}
+              whileTap={!isDisabled ? { scale: 0.98 } : {}}
+              onClick={() => !isDisabled && setSelectedRisk(isSelected ? null : level)}
+              disabled={isDisabled}
+              className={cn(
+                "relative text-left bg-white rounded-2xl border p-6 transition-all overflow-hidden",
+                isDisabled
+                  ? "border-slate-200/60 opacity-50 cursor-not-allowed"
+                  : isSelected
+                    ? `border-transparent shadow-lg ring-4 ${meta.ring}`
+                    : "border-slate-200/70 hover:shadow-md cursor-pointer",
+              )}
+            >
+              {/* 左側色條 */}
+              <div className={cn("absolute left-0 top-0 bottom-0 w-1.5", meta.color)} />
+              <div className="pl-2">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-bold text-slate-500 tracking-wide">{meta.label}</span>
+                  {isSelected && (
+                    <ChevronDown size={16} className="text-slate-400 rotate-180 transition" />
+                  )}
+                </div>
+                <div className={cn(
+                  "text-5xl font-black leading-none",
+                  count === 0 ? "text-slate-300" : meta.text,
+                )}>
+                  {count}
+                </div>
+                <div className="text-[11px] text-slate-400 mt-2">
+                  {count === 0 ? "目前無此風險卡點"
+                    : isSelected ? "點此收合" : "點擊看清單"}
+                </div>
+              </div>
+            </motion.button>
+          );
+        })}
       </div>
 
-      {/* 活躍卡點 */}
-      {activeBlockers.length > 0 && (
-        <section className="mb-10">
-          <div className="flex items-baseline gap-2 mb-4">
-            <h3 className="text-base font-bold text-slate-900">活躍卡點</h3>
-            <span className="text-xs text-slate-400">共 {activeBlockers.length} 筆 · 按風險排序</span>
-          </div>
-          <div className="space-y-2.5">
-            {activeBlockers.map((a, i) => {
-              const id = a.blocker?.id || String(i);
-              const isExpanded = expandedId === id;
-              const tone = a.level === "critical" ? "border-red-200 bg-gradient-to-r from-red-50 to-white"
-                         : a.level === "high"     ? "border-amber-200 bg-gradient-to-r from-amber-50 to-white"
-                         : a.level === "medium"   ? "border-blue-200 bg-gradient-to-r from-blue-50/60 to-white"
-                         : "border-slate-200 bg-white";
-              const dot  = a.level === "critical" ? "bg-red-500"
-                         : a.level === "high"     ? "bg-amber-500"
-                         : a.level === "medium"   ? "bg-blue-500"
-                         : "bg-emerald-500";
-              const pillBg = a.level === "critical" ? "bg-red-500"
-                           : a.level === "high"     ? "bg-amber-500"
-                           : a.level === "medium"   ? "bg-blue-500"
-                           : "bg-emerald-500";
-              return (
-                <motion.div
-                  key={id}
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.04 }}
-                >
-                  <button
-                    onClick={() => setExpandedId(isExpanded ? null : id)}
-                    className={cn(
-                      "w-full text-left rounded-2xl border transition-all hover:shadow-md",
-                      tone,
-                    )}
+      {/* 選中風險的卡點清單（預設收起） */}
+      <AnimatePresence initial={false}>
+        {selectedRisk && filteredBlockers.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.25 }}
+            className="overflow-hidden mb-10"
+          >
+            <div className="pt-4 pb-2 flex items-center gap-2">
+              <div className={cn("w-2 h-2 rounded-full", RISK_META[selectedRisk].dot)} />
+              <h3 className="text-base font-bold text-slate-900">
+                {RISK_META[selectedRisk].label} · {filteredBlockers.length} 筆
+              </h3>
+            </div>
+            <div className="space-y-2.5">
+              {filteredBlockers.map((a, i) => {
+                const id = a.blocker?.id || String(i);
+                const isExpanded = expandedId === id;
+                const meta = RISK_META[a.level as RiskLevel];
+                return (
+                  <motion.div
+                    key={id}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.03 }}
                   >
-                    <div className="flex items-center gap-4 p-5">
-                      <div className={cn("w-2.5 h-2.5 rounded-full shrink-0", dot)} />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-base font-bold text-slate-900 truncate">
-                          {a.blocker?.title || a.originalText}
-                        </div>
-                        <div className="mt-1 flex items-center gap-3 text-xs text-slate-500">
-                          <span className="font-medium text-slate-600">{a.categoryInfo?.label}</span>
-                          <span className="text-slate-300">·</span>
-                          <span>已卡 <strong className="text-slate-800">{a.currentDays}</strong> 天</span>
-                          {a.hasData ? (
-                            <>
-                              <span className="text-slate-300">·</span>
-                              <span>超過歷史 <strong className="text-slate-800">{a.percentile}%</strong></span>
-                            </>
-                          ) : (
-                            <>
-                              <span className="text-slate-300">·</span>
-                              <span className="text-slate-400">無同類歷史可比對</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <span className={cn(
-                          "px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide text-white",
-                          pillBg,
-                        )}>
-                          {a.levelLabel}
-                        </span>
-                        <ChevronDown size={18} className={cn("text-slate-400 transition", isExpanded && "rotate-180")} />
-                      </div>
-                    </div>
-
-                    <AnimatePresence>
-                      {isExpanded && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="px-5 pb-5 pt-1 border-t border-slate-200/70">
-                            {a.blocker?.description && (
-                              <p className="text-sm text-slate-700 leading-relaxed mb-4">
-                                {a.blocker.description}
-                              </p>
-                            )}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
-                              <StatMini label="負責部門"   value={a.blocker?.dept || "-"} />
-                              <StatMini label="負責人"     value={a.blocker?.owner || "-"} />
-                              <StatMini label="關聯案件"   value={a.blocker?.caseId || "-"} />
-                              <StatMini
-                                label="同類 P75 / P90"
-                                value={a.hasData ? `${a.p75.toFixed(0)} / ${a.p90.toFixed(0)} 天` : "尚無樣本"}
-                              />
-                            </div>
-                            {a.hasData && (
-                              <div className={cn(
-                                "mt-4 px-4 py-3 rounded-xl text-sm leading-relaxed",
-                                a.level === "critical" ? "bg-red-100/80 text-red-900"
-                                : a.level === "high"   ? "bg-amber-100/80 text-amber-900"
-                                : a.level === "medium" ? "bg-blue-50 text-blue-800"
-                                : "bg-emerald-50 text-emerald-800",
-                              )}>
-                                <strong className="font-bold">處理建議：</strong>
-                                {a.level === "critical" && "已達極高風險（P95+），請立刻召開協調會議。"}
-                                {a.level === "high"     && "建議在本週內安排升級處理。"}
-                                {a.level === "medium"   && "進入關注區，請追蹤後續進度。"}
-                                {a.level === "normal"   && "仍在正常處理時程內。"}
-                              </div>
+                    <button
+                      onClick={() => setExpandedId(isExpanded ? null : id)}
+                      className={cn(
+                        "w-full text-left rounded-2xl border bg-white transition-all hover:shadow-md",
+                        isExpanded ? "border-slate-300 shadow-md" : "border-slate-200/70",
+                      )}
+                    >
+                      <div className="flex items-center gap-4 p-5">
+                        <div className={cn("w-2.5 h-2.5 rounded-full shrink-0", meta.dot)} />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-base font-bold text-slate-900 truncate">
+                            {a.blocker?.title || a.originalText}
+                          </div>
+                          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                            <span className="font-medium text-slate-600">{a.categoryInfo?.label}</span>
+                            <span className="text-slate-300">·</span>
+                            <span>已卡 <strong className="text-slate-800">{a.currentDays}</strong> 天</span>
+                            {a.hasData ? (
+                              <>
+                                <span className="text-slate-300">·</span>
+                                <span>超過歷史 <strong className="text-slate-800">{a.percentile}%</strong></span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-slate-300">·</span>
+                                <span className="text-slate-400">無同類歷史可比對</span>
+                              </>
                             )}
                           </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </button>
-                </motion.div>
-              );
-            })}
-          </div>
-        </section>
-      )}
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className={cn(
+                            "px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide text-white",
+                            meta.color,
+                          )}>
+                            {a.levelLabel}
+                          </span>
+                          <ChevronDown size={18} className={cn("text-slate-400 transition", isExpanded && "rotate-180")} />
+                        </div>
+                      </div>
+
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="px-5 pb-5 pt-1 border-t border-slate-200/70">
+                              {a.blocker?.description && (
+                                <p className="text-sm text-slate-700 leading-relaxed mb-4">
+                                  {a.blocker.description}
+                                </p>
+                              )}
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                                <StatMini label="負責部門" value={a.blocker?.dept || "-"} />
+                                <StatMini label="負責人"   value={a.blocker?.owner || "-"} />
+                                <StatMini label="關聯案件" value={a.blocker?.caseId || "-"} />
+                                <StatMini
+                                  label="同類 P75 / P90"
+                                  value={a.hasData ? `${a.p75.toFixed(0)} / ${a.p90.toFixed(0)} 天` : "尚無樣本"}
+                                />
+                              </div>
+                              {a.hasData && (
+                                <div className={cn(
+                                  "mt-4 px-4 py-3 rounded-xl text-sm leading-relaxed",
+                                  a.level === "critical" ? "bg-red-100/80 text-red-900"
+                                  : a.level === "high"   ? "bg-amber-100/80 text-amber-900"
+                                  : a.level === "medium" ? "bg-blue-50 text-blue-800"
+                                  : "bg-emerald-50 text-emerald-800",
+                                )}>
+                                  <strong className="font-bold">處理建議：</strong>
+                                  {a.level === "critical" && "已達極高風險（P95+），請立刻召開協調會議。"}
+                                  {a.level === "high"     && "建議在本週內安排升級處理。"}
+                                  {a.level === "medium"   && "進入關注區，請追蹤後續進度。"}
+                                  {a.level === "normal"   && "仍在正常處理時程內。"}
+                                </div>
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </button>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 隔線 */}
+      <div className="my-8 border-t border-slate-200/60" />
 
       {/* 各類別平均解決天數 chart */}
       <Card className="p-6 mb-8 rounded-2xl">
@@ -337,20 +394,6 @@ export default function BlockerAnalyticsPage({ blockers, history }: Props) {
           </div>
         )}
       </Modal>
-    </div>
-  );
-}
-
-function RiskTile({ label, value, color, textColor }: { label: string; value: number; color: string; textColor: string }) {
-  return (
-    <div className="bg-white rounded-2xl border border-slate-200/70 p-4 flex items-center gap-3">
-      <div className={cn("w-2 h-10 rounded-full", color)} />
-      <div className="flex-1">
-        <div className="text-[11px] text-slate-500 font-medium">{label}</div>
-        <div className={cn("text-2xl font-black leading-none mt-1", value === 0 ? "text-slate-300" : textColor)}>
-          {value}
-        </div>
-      </div>
     </div>
   );
 }
