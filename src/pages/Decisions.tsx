@@ -1,0 +1,289 @@
+import { useState } from "react";
+import { Gavel, Plus, Check, Trash2, CheckCircle2 } from "lucide-react";
+import { motion } from "motion/react";
+import { Card } from "../components/ui/Card";
+import { Button } from "../components/ui/Button";
+import { Modal } from "../components/ui/Modal";
+import { cn } from "../lib/utils";
+import { NOW } from "../lib/dateUtils";
+import type { Decision } from "../lib/types";
+import type { UserProfile } from "../lib/firebase";
+
+interface Props {
+  decisions: Decision[];
+  setDecisions: (d: Decision[] | ((p: Decision[]) => Decision[])) => void;
+  departments: { name: string; active: boolean }[];
+  userProfile: UserProfile | null;
+}
+
+const STATUS_STYLE = {
+  逾期:    { bg: "bg-red-50",     text: "text-red-600",     dot: "bg-red-500",     label: "逾期" },
+  執行中:  { bg: "bg-blue-50",    text: "text-blue-600",    dot: "bg-blue-500",    label: "執行中" },
+  已完成:  { bg: "bg-emerald-50", text: "text-emerald-600", dot: "bg-emerald-500", label: "已完成" },
+};
+
+const today = () => NOW.toISOString().slice(0, 10);
+
+export default function DecisionsPage({ decisions, setDecisions, departments, userProfile }: Props) {
+  const [viewing, setViewing] = useState<Decision | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<Decision | null>(null);
+
+  const overdue   = decisions.filter((d) => d.status === "逾期");
+  const inProgress = decisions.filter((d) => d.status === "執行中");
+  const done      = decisions.filter((d) => d.status === "已完成");
+
+  const markDone = (id: string) => {
+    setDecisions((prev) => prev.map((d) =>
+      d.id === id ? { ...d, status: "已完成", completedAt: today() } : d,
+    ));
+    setViewing(null);
+  };
+  const deleteOne = (d: Decision) => {
+    if (!confirm(`確認刪除決策「${d.title}」？`)) return;
+    setDecisions((prev) => prev.filter((x) => x.id !== d.id));
+    setViewing(null);
+  };
+
+  return (
+    <div className="max-w-5xl mx-auto pb-8">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <div className="text-[11px] text-slate-400 tracking-[0.25em] font-bold mb-2">DECISION LOG</div>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+            還有 <span className="text-blue-500">{inProgress.length + overdue.length}</span> 件決策待完成
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">記錄董事會/投委會決議，追蹤執行進度。</p>
+        </div>
+        <Button variant="primary" icon={<Plus size={14} />} onClick={() => setCreating(true)}>
+          新增決策
+        </Button>
+      </div>
+
+      {/* 3 欄統計 */}
+      <div className="grid grid-cols-3 gap-4 mb-8">
+        <StatCard label="逾期" count={overdue.length} status="逾期" />
+        <StatCard label="執行中" count={inProgress.length} status="執行中" />
+        <StatCard label="已完成" count={done.length} status="已完成" />
+      </div>
+
+      {/* 三組列表 */}
+      {[
+        { label: "逾期（需優先處理）", items: overdue },
+        { label: "執行中", items: inProgress },
+        { label: "已完成", items: done },
+      ].map((g) => g.items.length > 0 && (
+        <section key={g.label} className="mb-6">
+          <h3 className="text-sm font-bold text-slate-700 mb-3">{g.label} <span className="text-slate-400 text-xs">({g.items.length})</span></h3>
+          <div className="space-y-2">
+            {g.items.map((d) => (
+              <DecisionRow key={d.id} d={d} onClick={() => setViewing(d)} />
+            ))}
+          </div>
+        </section>
+      ))}
+
+      {decisions.length === 0 && (
+        <Card className="p-12 text-center text-slate-400">尚無決策記錄</Card>
+      )}
+
+      {/* 詳情 Modal */}
+      <Modal
+        open={!!viewing}
+        onClose={() => setViewing(null)}
+        title={viewing?.title}
+        subtitle={viewing && `${viewing.decidedBy} · 決議於 ${viewing.decidedAt}`}
+        maxWidth={580}
+      >
+        {viewing && (
+          <div className="space-y-4">
+            <div className="bg-slate-50 rounded-xl p-4 text-sm leading-relaxed text-slate-700">
+              {viewing.content}
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <KV label="指派部門" value={viewing.assignedDept} />
+              <KV label="預期完成" value={viewing.dueDate} />
+              <KV label="目前狀態" value={viewing.status} status={viewing.status} />
+              <KV label={viewing.completedAt ? "完成日" : "關聯案件"} value={viewing.completedAt || (viewing.linkedCases?.join(", ") || "—")} />
+            </div>
+            {viewing.notes && (
+              <div>
+                <div className="text-[10px] text-slate-400 font-bold tracking-wider mb-1.5">備註</div>
+                <div className="text-xs text-slate-600 bg-blue-50/50 rounded-lg p-3 leading-relaxed">{viewing.notes}</div>
+              </div>
+            )}
+            <div className="flex justify-between pt-3 border-t border-slate-100">
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => { setEditing(viewing); setViewing(null); }}>編輯</Button>
+                <Button variant="ghost" size="sm" icon={<Trash2 size={12} />} onClick={() => deleteOne(viewing)}>刪除</Button>
+              </div>
+              {viewing.status !== "已完成" && (
+                <Button variant="success" icon={<Check size={14} />} onClick={() => markDone(viewing.id)}>
+                  標記為已完成
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* 新增 / 編輯 Modal */}
+      <DecisionFormModal
+        open={creating || !!editing}
+        onClose={() => { setCreating(false); setEditing(null); }}
+        existing={editing}
+        departments={departments.filter((d) => d.active).map((d) => d.name)}
+        onSave={(form) => {
+          if (editing) {
+            setDecisions((prev) => prev.map((x) => x.id === editing.id ? { ...x, ...form } : x));
+          } else {
+            const newD: Decision = {
+              id: "d" + Date.now(),
+              decidedAt: today(),
+              status: "執行中",
+              linkedCases: [],
+              ...form,
+            };
+            setDecisions((prev) => [newD, ...prev]);
+          }
+          setCreating(false);
+          setEditing(null);
+        }}
+        userProfile={userProfile}
+      />
+    </div>
+  );
+}
+
+function StatCard({ label, count, status }: { label: string; count: number; status: keyof typeof STATUS_STYLE }) {
+  const s = STATUS_STYLE[status];
+  return (
+    <Card className="p-5">
+      <div className="flex items-center gap-2 mb-2">
+        <div className={cn("w-2 h-2 rounded-full", s.dot)} />
+        <div className="text-[10px] text-slate-400 tracking-wider font-bold">{label.toUpperCase()}</div>
+      </div>
+      <div className={cn("text-3xl font-black tracking-tight", s.text)}>{count}</div>
+    </Card>
+  );
+}
+
+function DecisionRow({ d, onClick }: { d: Decision; onClick: () => void; key?: any }) {
+  const s = STATUS_STYLE[d.status];
+  return (
+    <motion.button
+      whileHover={{ x: 2 }}
+      onClick={onClick}
+      className="w-full text-left p-4 bg-white rounded-xl border border-slate-200/60 hover:border-slate-300 hover:shadow-sm transition-all"
+    >
+      <div className="flex items-center gap-3">
+        <div className={cn("w-2 h-2 rounded-full shrink-0", s.dot)} />
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-bold text-slate-900 truncate">{d.title}</div>
+          <div className="text-[11px] text-slate-500 mt-0.5 truncate">
+            {d.decidedBy} · 指派 {d.assignedDept} · 期限 {d.dueDate}
+          </div>
+        </div>
+        <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0", s.bg, s.text)}>
+          {s.label}
+        </span>
+      </div>
+    </motion.button>
+  );
+}
+
+function KV({ label, value, status }: { label: string; value: string; status?: keyof typeof STATUS_STYLE }) {
+  return (
+    <div className="bg-slate-50 rounded-lg p-3">
+      <div className="text-[10px] text-slate-400 font-bold tracking-wide mb-1">{label}</div>
+      <div className={cn("font-bold text-slate-900", status && STATUS_STYLE[status].text)}>{value}</div>
+    </div>
+  );
+}
+
+// ===== 新增/編輯表單 Modal =====
+function DecisionFormModal({
+  open, onClose, existing, departments, onSave, userProfile,
+}: {
+  open: boolean;
+  onClose: () => void;
+  existing: Decision | null;
+  departments: string[];
+  onSave: (data: Omit<Decision, "id">) => void;
+  userProfile: UserProfile | null;
+}) {
+  const [form, setForm] = useState({
+    title: existing?.title || "",
+    content: existing?.content || "",
+    decidedBy: existing?.decidedBy || "董事會",
+    assignedDept: existing?.assignedDept || departments[0] || "",
+    dueDate: existing?.dueDate || "",
+    notes: existing?.notes || "",
+  });
+  const valid = form.title.trim() && form.content.trim() && form.dueDate.trim();
+
+  return (
+    <Modal open={open} onClose={onClose} title={existing ? "編輯決策" : "新增決策"} maxWidth={560}>
+      <div className="space-y-4">
+        <Field label="決策標題 *" value={form.title} onChange={(v) => setForm({ ...form, title: v })} placeholder="例：A 新創 Pre-A 輪投資金額上限" />
+        <Field label="決議內容 *" value={form.content} onChange={(v) => setForm({ ...form, content: v })} placeholder="具體決議內容與條件" rows={3} />
+        <div className="grid grid-cols-2 gap-3">
+          <Select label="決議單位" value={form.decidedBy} onChange={(v) => setForm({ ...form, decidedBy: v })}
+            options={["董事會", "投資委員會", "營運會議"]} />
+          <Select label="指派執行" value={form.assignedDept} onChange={(v) => setForm({ ...form, assignedDept: v })}
+            options={departments} />
+        </div>
+        <Field label="預期完成日 *" type="date" value={form.dueDate} onChange={(v) => setForm({ ...form, dueDate: v })} />
+        <Field label="備註" value={form.notes} onChange={(v) => setForm({ ...form, notes: v })} placeholder="(選填)" rows={2} />
+        <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+          <Button variant="secondary" onClick={onClose}>取消</Button>
+          <Button
+            variant="primary"
+            disabled={!valid}
+            onClick={() => onSave({
+              ...form,
+              decidedAt: existing?.decidedAt || today(),
+              status: existing?.status || "執行中",
+              linkedCases: existing?.linkedCases || [],
+            })}
+          >
+            {existing ? "更新" : "記錄決策"}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function Field({ label, value, onChange, placeholder, type = "text", rows }: {
+  label: string; value: string; onChange: (v: string) => void;
+  placeholder?: string; type?: string; rows?: number;
+}) {
+  const Tag = rows ? "textarea" : "input";
+  return (
+    <div>
+      <label className="block text-[11px] font-bold text-slate-600 mb-1.5 tracking-wide">{label}</label>
+      <Tag
+        // @ts-ignore
+        type={type}
+        value={value}
+        rows={rows}
+        onChange={(e: any) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full px-3 py-2.5 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+      />
+    </div>
+  );
+}
+
+function Select({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: string[] }) {
+  return (
+    <div>
+      <label className="block text-[11px] font-bold text-slate-600 mb-1.5 tracking-wide">{label}</label>
+      <select value={value} onChange={(e) => onChange(e.target.value)}
+        className="w-full px-3 py-2.5 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 cursor-pointer">
+        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+    </div>
+  );
+}

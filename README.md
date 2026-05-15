@@ -1,0 +1,168 @@
+# 串連股份有限公司 · 管理層決策輔助系統 v2.0
+
+> 給中小型投資/管理顧問公司（20–50 人）的單一窗口，
+> 讓董事長 5 分鐘看完「公司今天怎麼樣 + 我要做什麼」。
+
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)]()
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)]()
+[![Tailwind](https://img.shields.io/badge/Tailwind-4-06B6D4?logo=tailwindcss)]()
+[![Firebase](https://img.shields.io/badge/Firebase-10-FFCA28?logo=firebase)]()
+
+---
+
+## 🎯 系統定位
+
+**不是賣 Dashboard，是賣 3 個獨家演算法。**
+
+| 亮點演算法 | 解決什麼 | 競品做不到的 |
+|---|---|---|
+| **加權員工負載**（Andy Grove × 時間衰減 × Gini） | 找出「被高度依賴的單點失敗節點」 | Notion / Asana 只看任務數 |
+| **TF-IDF + Cosine Similarity 歷史檢索** | 把過去案件變可搜尋的組織記憶 | LINE / Email 散落無法檢索 |
+| **卡點經驗百分位** | 用同類歷史推算「拖太久」 | SLA 太死板，不貼真實 |
+
+---
+
+## 📦 技術棧
+
+- **前端**：React 19 + TypeScript + Vite 6 + Tailwind CSS v4
+- **動畫**：Framer Motion (`motion/react`)
+- **圖表**：Recharts + SVG (自繪)
+- **後端**：Firebase Authentication + Cloud Firestore
+
+---
+
+## 🚀 本地開發
+
+```bash
+# 1. 安裝
+npm install
+
+# 2. (選用) 設定 Firebase 環境變數
+cp .env.example .env.local
+# 編輯 .env.local 填入 Firebase 設定，未設定會用 demo 預設
+
+# 3. 啟動
+npm run dev
+```
+
+瀏覽器自動開啟 [http://localhost:3000](http://localhost:3000)
+
+**測試帳號**（需先在 Firebase Console 建立）：
+- `admin@test.com` · 管理層
+- `manager-research@test.com` · 部門主管
+- `member@test.com` · 一般員工
+
+---
+
+## 📁 專案結構
+
+```
+src/
+├─ App.tsx                  # 主路由 + auth gate
+├─ lib/
+│  ├─ firebase.ts           # 認證 + Firestore CRUD
+│  ├─ types.ts              # TypeScript 型別
+│  ├─ algorithms.ts         # 員工負載 / 卡點分位數 / TF-IDF / ORI
+│  ├─ seedData.ts           # 程序化產生 150 週報 / 79 交接
+│  ├─ constants.ts          # 部門 / 卡點類別 / 使用者
+│  └─ dateUtils.ts          # 週次工具
+├─ hooks/
+│  └─ useAppData.ts         # Firebase 雙向同步
+├─ components/
+│  ├─ Login.tsx
+│  ├─ Shell/                # Sidebar + Header
+│  └─ ui/                   # Card / Button / Pill / Modal / PageHeader
+└─ pages/
+   ├─ Dashboard.tsx         # ★ 3 個亮點 Hero Card
+   ├─ WeeklyReport.tsx
+   ├─ Handoff.tsx
+   ├─ Decisions.tsx
+   ├─ EmployeeLoad.tsx      # ★ 加權模型 + 詳情拆解
+   ├─ History.tsx           # ★ TF-IDF 全文檢索
+   ├─ BlockerAnalytics.tsx  # ★ 分位數風險面板
+   ├─ OrgAnalytics.tsx      # SVG 部門互動網絡
+   ├─ MeetingPrep.tsx
+   └─ LineBot.tsx
+```
+
+---
+
+## 🧮 核心演算法
+
+### 1. 加權員工負載 (Weighted Load Model)
+
+```
+W_total = Σ (decay × complexity)  +  blocker × 2.5
+        + mentions × 1.5
+        + handoff × 1.5 (pending × 4)
+```
+
+- 時間衰減：本週 1.0 / 上週 0.7 / 2 週前 0.4 / 3 週前 0.15
+- 複雜度權重：跨部門 ×1.5 / 卡點相關 ×2.0
+- 分位數比較：個人 vs 全公司分布
+
+### 2. TF-IDF + Cosine Similarity
+
+```
+IDF(t) = log((N+1) / (df(t)+1)) + 1
+sim(q, d) = (q · d) / (||q|| × ||d||)
+```
+
+- 中英混合 tokenize（2-gram + 英數連續）
+- 加權序列化：標題 ×3 / tags ×2 / 其他內文 ×1
+- 顯示 HIGH-IDF 切詞 + match terms（演算法透明度）
+
+### 3. 卡點經驗百分位
+
+```
+percentile(d) = |{ h ∈ history : h.daysToResolve ≤ d }| / |history|
+```
+
+- 不假設常態分佈
+- 優先使用同類歷史，不足 5 筆則用全公司
+- 風險等級：P95+ critical / P90 high / P75 medium / 其他 normal
+
+### 4. ORI (Organizational Risk Index)
+
+```
+ORI = 0.35·HCC + 0.25·DL + 0.25·BT + 0.15·CDC
+```
+
+- HCC: Human Capital Concentration (Gini + Top-1 share + σ outliers)
+- DL: Decision Latency (平均執行 + 逾期)
+- BT: Blocker Tail Risk (P90+ 數量 + 平均分位)
+- CDC: Cross-Dept Communication (不對稱次數)
+
+---
+
+## 🔐 角色權限
+
+| 角色 | 可看模組 |
+|---|---|
+| **admin** (管理層) | 全部 10 個分頁 |
+| **manager** (部門主管) | 8 個（除員工負載、組織分析、會議準備） |
+| **member** (一般員工) | 4 個（Dashboard、週報、交接、LINE Bot） |
+
+---
+
+## 📝 Build
+
+```bash
+npm run build      # 產出 dist/
+npm run preview    # 本地預覽 production build
+npm run lint       # TypeScript 型別檢查
+```
+
+**Production bundle：256 KB gzipped**
+
+---
+
+## 👥 開發團隊
+
+資管導論 第 13 組 · 2026
+
+---
+
+## 📄 License
+
+Apache-2.0
