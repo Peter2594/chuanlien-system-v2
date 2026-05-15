@@ -5,98 +5,19 @@ import { Card } from "../components/ui/Card";
 import { Pill } from "../components/ui/Pill";
 import { cn } from "../lib/utils";
 import { displayWeek } from "../lib/dateUtils";
+import { searchHistory } from "../lib/historySearch";
 import type { HistoryCase } from "../lib/types";
 
 interface Props {
   history: HistoryCase[];
 }
 
-// TF-IDF tokenize（中英 2-gram + 英數連續）
-function tokenize(text: string): string[] {
-  if (!text) return [];
-  const s = String(text).toLowerCase();
-  const tokens: string[] = [];
-  const alnum = s.match(/[a-z0-9]+/g) || [];
-  tokens.push(...alnum);
-  const chineseChars = s.replace(/[^一-龥]/g, "");
-  for (let i = 0; i < chineseChars.length - 1; i++) {
-    tokens.push(chineseChars.slice(i, i + 2));
-  }
-  return tokens;
-}
-
 export default function HistoryPage({ history }: Props) {
   const [q, setQ] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // TF-IDF 計算
-  const { results, hotTerms } = useMemo(() => {
-    const docText = (item: HistoryCase) => [
-      item.title, item.title, item.title,
-      ...(item.tags || []).flatMap((t) => [t, t]),
-      item.summary, item.outcome, item.owner,
-      item.detail?.background, item.detail?.process,
-      item.detail?.valuation, item.detail?.result, item.detail?.lessons,
-      ...(item.detail?.keyInsights || []),
-    ].filter(Boolean).join(" ");
-
-    const docs = history.map((item) => {
-      const tokens = tokenize(docText(item));
-      const tf: Record<string, number> = {};
-      tokens.forEach((t) => { tf[t] = (tf[t] || 0) + 1; });
-      return { item, tokens, tf, length: tokens.length };
-    });
-
-    const N = docs.length || 1;
-    const df: Record<string, number> = {};
-    docs.forEach((d) => Object.keys(d.tf).forEach((t) => { df[t] = (df[t] || 0) + 1; }));
-    const idf: Record<string, number> = {};
-    Object.keys(df).forEach((t) => { idf[t] = Math.log((N + 1) / (df[t] + 1)) + 1; });
-
-    const queryTokens = tokenize(q);
-    const queryTf: Record<string, number> = {};
-    queryTokens.forEach((t) => { queryTf[t] = (queryTf[t] || 0) + 1; });
-
-    const queryVec: Record<string, number> = {};
-    let qNorm = 0;
-    Object.keys(queryTf).forEach((t) => {
-      const v = (queryTf[t] / Math.max(1, queryTokens.length)) * (idf[t] || 1);
-      queryVec[t] = v;
-      qNorm += v * v;
-    });
-    qNorm = Math.sqrt(qNorm);
-
-    const scored = docs.map((d) => {
-      if (!q.trim()) return { ...d.item, relevance: 100, _terms: [] as string[] };
-      if (qNorm === 0) return { ...d.item, relevance: 0, _terms: [] as string[] };
-      let dot = 0, dNorm = 0;
-      const contribs: { term: string; w: number }[] = [];
-      Object.keys(queryVec).forEach((t) => {
-        const dTfidf = ((d.tf[t] || 0) / Math.max(1, d.length)) * (idf[t] || 1);
-        const c = queryVec[t] * dTfidf;
-        if (c > 0) contribs.push({ term: t, w: c });
-        dot += c;
-      });
-      Object.keys(d.tf).forEach((t) => {
-        const v = (d.tf[t] / Math.max(1, d.length)) * (idf[t] || 1);
-        dNorm += v * v;
-      });
-      dNorm = Math.sqrt(dNorm);
-      const sim = dNorm === 0 ? 0 : dot / (qNorm * dNorm);
-      const topTerms = contribs.sort((a, b) => b.w - a.w).slice(0, 4).map((x) => x.term);
-      return { ...d.item, relevance: Math.round(sim * 100), _terms: topTerms };
-    });
-
-    const filtered = scored
-      .filter((h) => h.relevance > 0 || !q.trim())
-      .sort((a, b) => b.relevance - a.relevance);
-
-    const hotTerms = q.trim()
-      ? Object.keys(queryVec).sort((a, b) => (idf[b] || 0) - (idf[a] || 0)).slice(0, 5).map((t) => ({ term: t, idf: (idf[t] || 0).toFixed(2) }))
-      : [];
-
-    return { results: filtered, hotTerms };
-  }, [q, history]);
+  // BM25F + n-gram + 同義詞 + substring boost
+  const results = useMemo(() => searchHistory(q, history), [q, history]);
 
   // 熱門標籤
   const popularTags = useMemo(() => {
@@ -192,10 +113,10 @@ export default function HistoryPage({ history }: Props) {
                 {/* tags + matched terms */}
                 <div className="flex flex-wrap items-center gap-1.5 mt-3">
                   {r.tags.map((t) => <Pill key={t} tone="purple">{t}</Pill>)}
-                  {r._terms && r._terms.length > 0 && (
+                  {r.matchedTerms && r.matchedTerms.length > 0 && (
                     <span className="ml-2 flex items-center gap-1">
                       <span className="text-[10px] text-slate-400 font-mono">match:</span>
-                      {r._terms.map((t) => (
+                      {r.matchedTerms.map((t) => (
                         <span key={t} className="px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded font-mono text-[10px]">
                           {t}
                         </span>
