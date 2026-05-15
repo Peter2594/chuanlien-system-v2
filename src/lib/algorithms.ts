@@ -159,14 +159,41 @@ export function analyzeEmployeeLoad(
 }
 
 // ===== 卡點分位數風險分析 =====
-export function analyzeBlockerRecord(blocker: Blocker, historyDB: Blocker[]) {
+// 從歷史案件抽出「解決天數」：標籤含類別關鍵字 → 同類；否則進整體池
+const extractDays = (outcome?: string) => {
+  const m = String(outcome || "").match(/(\d+)\s*天/);
+  return m ? parseInt(m[1]) : 0;
+};
+
+export function analyzeBlockerRecord(
+  blocker: Blocker,
+  historyDB: Blocker[],
+  historyCases: HistoryCase[] = [],
+) {
   const now = new Date();
   const createdAt = blocker.createdAt ? new Date(blocker.createdAt) : now;
   const currentDays = Math.max(1, Math.round((+now - +createdAt) / 86400000));
 
-  const sameCat = (historyDB || []).filter((h) => h.category === blocker.category && h.daysToResolve !== undefined);
-  const pool = sameCat.length >= 5 ? sameCat : (historyDB || []).filter((h) => h.daysToResolve !== undefined);
-  const days = pool.map((h) => h.daysToResolve!).filter((v) => v > 0);
+  const catLabel = BLOCKER_CATEGORIES.find((c) => c.key === blocker.category)?.label;
+
+  // 池一：同類別已解決卡點
+  const sameCatBlockers = (historyDB || [])
+    .filter((h) => h.category === blocker.category && h.daysToResolve !== undefined)
+    .map((h) => h.daysToResolve!);
+  // 池二：同類別歷史案件
+  const sameCatHistory = (historyCases || [])
+    .filter((h) => catLabel && (h.tags || []).includes(catLabel))
+    .map((h) => extractDays(h.outcome))
+    .filter((v) => v > 0);
+  // 池三：所有歷史案件
+  const allHistory = (historyCases || []).map((h) => extractDays(h.outcome)).filter((v) => v > 0);
+  const allBlockers = (historyDB || [])
+    .filter((h) => h.daysToResolve !== undefined)
+    .map((h) => h.daysToResolve!);
+
+  const sameCat = [...sameCatBlockers, ...sameCatHistory];
+  const pool = sameCat.length >= 5 ? sameCat : [...allBlockers, ...allHistory];
+  const days = pool.filter((v) => v > 0);
 
   if (days.length === 0) {
     return {
@@ -198,6 +225,7 @@ export function analyzeBlockerRecord(blocker: Blocker, historyDB: Blocker[]) {
     p75, p90, p95,
     categoryInfo: BLOCKER_CATEGORIES.find((c) => c.key === blocker.category) || BLOCKER_CATEGORIES[BLOCKER_CATEGORIES.length - 1],
     basisLabel: sameCat.length >= 5 ? "同類歷史" : "全公司歷史",
+    sampleSize: days.length,
   };
 }
 
