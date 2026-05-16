@@ -37,83 +37,100 @@ function eventToTab(event: string): TabId | null {
   return null;
 }
 
-// 事件 → 取出符合條件的具體項目（inline 展示用）
+// 事件 → 還原當週的具體項目（依 asOf 時間點推算）
 function resolveEventItems(
   event: string,
+  asOf: Date,
   data: { blockers: Blocker[]; decisions: Decision[]; handoffs: Handoff[]; reports: Report[]; departments: Department[] },
 ): { title: string; meta?: string; emphasis?: string }[] {
+  const asOfMs = +asOf;
+  const daysAt = (createdAt: string) =>
+    Math.max(0, Math.round((asOfMs - +new Date(createdAt)) / 86400000));
+
   if (/極高風險卡點/.test(event)) {
     return data.blockers
-      .filter((b) => b.status !== "resolved")
-      .map((b) => ({ ...b, days: Math.round((+NOW - +new Date(b.createdAt)) / 86400000) }))
+      .filter((b) => new Date(b.createdAt) <= asOf)
+      .map((b) => ({ ...b, days: daysAt(b.createdAt) }))
       .filter((b) => b.days >= 28)
       .sort((a, b) => b.days - a.days)
-      .map((b) => ({ title: b.title, meta: `${b.dept} · ${b.owner}`, emphasis: `已卡 ${b.days} 天` }));
+      .map((b) => ({ title: b.title, meta: `${b.dept} · ${b.owner}`, emphasis: `當週已卡 ${b.days} 天` }));
   }
   if (/高風險卡點/.test(event)) {
     return data.blockers
-      .filter((b) => b.status !== "resolved")
-      .map((b) => ({ ...b, days: Math.round((+NOW - +new Date(b.createdAt)) / 86400000) }))
+      .filter((b) => new Date(b.createdAt) <= asOf)
+      .map((b) => ({ ...b, days: daysAt(b.createdAt) }))
       .filter((b) => b.days >= 20 && b.days < 28)
       .sort((a, b) => b.days - a.days)
-      .map((b) => ({ title: b.title, meta: `${b.dept} · ${b.owner}`, emphasis: `已卡 ${b.days} 天` }));
+      .map((b) => ({ title: b.title, meta: `${b.dept} · ${b.owner}`, emphasis: `當週已卡 ${b.days} 天` }));
   }
   if (/決策逾期|筆決策/.test(event)) {
+    // 當週的「逾期」= 已決議 + 截止日已過 + (尚未完成 或 完成在 asOf 之後)
     return data.decisions
-      .filter((d) => d.status === "逾期")
+      .filter((d) => {
+        if (!d.decidedAt || !d.dueDate || d.dueDate === "即時生效") return false;
+        if (new Date(d.decidedAt) > asOf) return false;
+        if (new Date(d.dueDate) >= asOf) return false;
+        if (d.completedAt && new Date(d.completedAt) <= asOf) return false;
+        return true;
+      })
       .map((d) => ({
         title: d.title,
         meta: `指派 ${d.assignedDept}`,
-        emphasis: `逾期 ${Math.max(0, Math.round((+NOW - +new Date(d.dueDate)) / 86400000))} 天`,
+        emphasis: `當週逾期 ${Math.max(0, Math.round((asOfMs - +new Date(d.dueDate)) / 86400000))} 天`,
       }));
   }
   if (/員工過載|位員工/.test(event)) {
-    // 簡化：列出當前負責活躍卡點數最多的員工
+    // 算每位員工在 asOf 當下負責的活躍卡點數
     const counter: Record<string, { dept: string; count: number }> = {};
-    data.blockers.filter((b) => b.status !== "resolved").forEach((b) => {
-      if (!b.owner) return;
-      if (!counter[b.owner]) counter[b.owner] = { dept: b.dept, count: 0 };
-      counter[b.owner].count++;
-    });
+    data.blockers
+      .filter((b) => new Date(b.createdAt) <= asOf)
+      .forEach((b) => {
+        if (!b.owner) return;
+        if (!counter[b.owner]) counter[b.owner] = { dept: b.dept, count: 0 };
+        counter[b.owner].count++;
+      });
     return Object.entries(counter)
       .sort((a, b) => b[1].count - a[1].count)
       .slice(0, 5)
       .map(([name, info]) => ({
         title: name,
         meta: info.dept,
-        emphasis: `負責 ${info.count} 件活躍卡點`,
+        emphasis: `當週負責 ${info.count} 件卡點`,
       }));
   }
   if (/交接逾時/.test(event)) {
     return data.handoffs
-      .filter((h) => h.status === "待簽收" && (h.hoursOverdue || 0) > 0)
+      .filter((h) => new Date(h.createdAt) <= asOf && h.status === "待簽收" && (h.hoursOverdue || 0) > 0)
       .sort((a, b) => (b.hoursOverdue || 0) - (a.hoursOverdue || 0))
       .map((h) => ({
         title: h.title,
         meta: `${h.from} → ${h.to}`,
-        emphasis: `逾時 ${h.hoursOverdue} 小時`,
+        emphasis: `當週逾時 ${h.hoursOverdue} 小時`,
       }));
   }
   if (/單向溝通/.test(event)) {
     return [{
-      title: "本週偵測到部門間溝通不對稱",
-      meta: "請查看組織分析頁的網絡圖",
+      title: "當週偵測到部門間溝通不對稱",
+      meta: "請至組織分析頁的網絡圖查看",
       emphasis: "查看詳細",
     }];
   }
   if (/未交週報/.test(event)) {
     const activeDepts = data.departments.filter((d) => d.active && d.name !== "營運與管理層").map((d) => d.name);
-    // 取最近一週的提交狀況
-    const recentReports = data.reports.filter((r) => {
-      const d = r.submittedAt ? new Date(r.submittedAt) : null;
-      if (!d) return false;
-      const daysAgo = (+NOW - +d) / 86400000;
-      return daysAgo <= 7;
-    });
-    const submitted = new Set(recentReports.map((r) => r.dept));
+    // 該週繳交：submittedAt 在 asOf 前 7 天內
+    const weekStart = +asOf - 7 * 86400000;
+    const submitted = new Set(
+      data.reports
+        .filter((r) => {
+          if (!r.submittedAt) return false;
+          const t = +new Date(r.submittedAt);
+          return t > weekStart && t <= asOfMs;
+        })
+        .map((r) => r.dept),
+    );
     return activeDepts
       .filter((d) => !submitted.has(d))
-      .map((d) => ({ title: d, meta: "本週尚未繳交週報", emphasis: "待繳" }));
+      .map((d) => ({ title: d, meta: "當週尚未繳交週報", emphasis: "待繳" }));
   }
   return [];
 }
@@ -382,22 +399,19 @@ export function OrgHealthCard({
                             className="overflow-hidden mt-3"
                           >
                             {(() => {
-                              const items = resolveEventItems(expandedEvent, {
+                              // 用 pinned 週次的 asOf 還原當週狀態
+                              const asOf = new Date(NOW);
+                              const weeksBack = series.length - 1 - (pinnedWeek ?? series.length - 1);
+                              asOf.setDate(asOf.getDate() - weeksBack * 7);
+                              const items = resolveEventItems(expandedEvent, asOf, {
                                 blockers, decisions, handoffs, reports, departments,
                               });
                               const tab = eventToTab(expandedEvent);
-                              // 從 event 字串抽出原本的數字 (例如 "3 件極高風險卡點" → 3)
-                              const eventCountMatch = expandedEvent.match(/^(\d+)\s*[件筆位個組]/);
-                              const eventCount = eventCountMatch ? parseInt(eventCountMatch[1]) : items.length;
-                              const isCurrentWeek = pinnedWeek === series.length - 1;
-                              const isHistorical = !isCurrentWeek;
-                              const countMismatch = isHistorical && eventCount !== items.length;
-                              const resolved = countMismatch ? eventCount - items.length : 0;
                               return (
                                 <div className="bg-white rounded-lg border border-blue-200 p-3">
                                   <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-100">
                                     <div className="text-[11px] font-bold text-slate-700">
-                                      {isHistorical ? "目前仍存在的相關項目" : expandedEvent}
+                                      {pinnedWeekLabel}．{expandedEvent}
                                       <span className="text-slate-400 font-normal"> · 共 {items.length} 項</span>
                                     </div>
                                     {tab && onNavigate && (
@@ -410,24 +424,9 @@ export function OrgHealthCard({
                                     )}
                                   </div>
 
-                                  {/* 歷史 vs 現況差異提示 */}
-                                  {countMismatch && (
-                                    <div className="mb-2 px-2.5 py-2 rounded bg-amber-50 border border-amber-100 text-[10px] text-amber-800 flex items-start gap-1.5">
-                                      <span>ℹ️</span>
-                                      <span>
-                                        {pinnedWeekLabel}時共 <strong>{eventCount}</strong> 件，
-                                        {resolved > 0
-                                          ? <>其中 <strong>{resolved}</strong> 件已解決，目前仍有 <strong>{items.length}</strong> 件。</>
-                                          : <>目前列出仍符合此風險等級的 <strong>{items.length}</strong> 件。</>}
-                                      </span>
-                                    </div>
-                                  )}
-
                                   {items.length === 0 ? (
                                     <div className="text-[11px] text-slate-400 py-3 text-center">
-                                      {countMismatch
-                                        ? `${pinnedWeekLabel}的 ${eventCount} 件全部已解決 ✓`
-                                        : "目前無符合此事件的項目"}
+                                      無相關資料
                                     </div>
                                   ) : (
                                     <div className="space-y-1">
