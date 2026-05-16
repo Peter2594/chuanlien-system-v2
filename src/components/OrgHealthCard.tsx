@@ -386,11 +386,19 @@ export function OrgHealthCard({
                                 blockers, decisions, handoffs, reports, departments,
                               });
                               const tab = eventToTab(expandedEvent);
+                              // 從 event 字串抽出原本的數字 (例如 "3 件極高風險卡點" → 3)
+                              const eventCountMatch = expandedEvent.match(/^(\d+)\s*[件筆位個組]/);
+                              const eventCount = eventCountMatch ? parseInt(eventCountMatch[1]) : items.length;
+                              const isCurrentWeek = pinnedWeek === series.length - 1;
+                              const isHistorical = !isCurrentWeek;
+                              const countMismatch = isHistorical && eventCount !== items.length;
+                              const resolved = countMismatch ? eventCount - items.length : 0;
                               return (
                                 <div className="bg-white rounded-lg border border-blue-200 p-3">
                                   <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-100">
                                     <div className="text-[11px] font-bold text-slate-700">
-                                      {expandedEvent} <span className="text-slate-400 font-normal">· 共 {items.length} 項</span>
+                                      {isHistorical ? "目前仍存在的相關項目" : expandedEvent}
+                                      <span className="text-slate-400 font-normal"> · 共 {items.length} 項</span>
                                     </div>
                                     {tab && onNavigate && (
                                       <button
@@ -401,9 +409,25 @@ export function OrgHealthCard({
                                       </button>
                                     )}
                                   </div>
+
+                                  {/* 歷史 vs 現況差異提示 */}
+                                  {countMismatch && (
+                                    <div className="mb-2 px-2.5 py-2 rounded bg-amber-50 border border-amber-100 text-[10px] text-amber-800 flex items-start gap-1.5">
+                                      <span>ℹ️</span>
+                                      <span>
+                                        {pinnedWeekLabel}時共 <strong>{eventCount}</strong> 件，
+                                        {resolved > 0
+                                          ? <>其中 <strong>{resolved}</strong> 件已解決，目前仍有 <strong>{items.length}</strong> 件。</>
+                                          : <>目前列出仍符合此風險等級的 <strong>{items.length}</strong> 件。</>}
+                                      </span>
+                                    </div>
+                                  )}
+
                                   {items.length === 0 ? (
                                     <div className="text-[11px] text-slate-400 py-3 text-center">
-                                      目前無符合此事件的項目
+                                      {countMismatch
+                                        ? `${pinnedWeekLabel}的 ${eventCount} 件全部已解決 ✓`
+                                        : "目前無符合此事件的項目"}
                                     </div>
                                   ) : (
                                     <div className="space-y-1">
