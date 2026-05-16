@@ -95,16 +95,10 @@ function resolveEventItems(
       });
   }
   if (/員工過載|位員工/.test(event)) {
-    // 用 analyzeEmployeeLoad 取得當週時點的負載，篩 level === "overload"
-    // 與 chip 的計算來源一致
-    const weekStart = +asOf - 7 * 86400000;
-    const weekReports = data.reports.filter((r) => {
-      if (!r.submittedAt) return false;
-      const t = +new Date(r.submittedAt);
-      return t > weekStart && t <= asOfMs;
-    });
+    // analyzeEmployeeLoad 內部有時間衰減，傳全部 reports 即可
+    // 與 EmployeeLoad 頁、orgHealth snapshot 三邊一致
     const activeHandoffs = data.handoffs.filter((h) => new Date(h.createdAt) <= asOf);
-    const loads = analyzeEmployeeLoad(weekReports, activeHandoffs, data.employees);
+    const loads = analyzeEmployeeLoad(data.reports, activeHandoffs, data.employees);
     return loads
       .filter((l) => l.level === "overload")
       .sort((a, b) => b.loadScore - a.loadScore)
