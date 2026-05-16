@@ -37,6 +37,87 @@ function eventToTab(event: string): TabId | null {
   return null;
 }
 
+// 事件 → 取出符合條件的具體項目（inline 展示用）
+function resolveEventItems(
+  event: string,
+  data: { blockers: Blocker[]; decisions: Decision[]; handoffs: Handoff[]; reports: Report[]; departments: Department[] },
+): { title: string; meta?: string; emphasis?: string }[] {
+  if (/極高風險卡點/.test(event)) {
+    return data.blockers
+      .filter((b) => b.status !== "resolved")
+      .map((b) => ({ ...b, days: Math.round((+NOW - +new Date(b.createdAt)) / 86400000) }))
+      .filter((b) => b.days >= 28)
+      .sort((a, b) => b.days - a.days)
+      .map((b) => ({ title: b.title, meta: `${b.dept} · ${b.owner}`, emphasis: `已卡 ${b.days} 天` }));
+  }
+  if (/高風險卡點/.test(event)) {
+    return data.blockers
+      .filter((b) => b.status !== "resolved")
+      .map((b) => ({ ...b, days: Math.round((+NOW - +new Date(b.createdAt)) / 86400000) }))
+      .filter((b) => b.days >= 20 && b.days < 28)
+      .sort((a, b) => b.days - a.days)
+      .map((b) => ({ title: b.title, meta: `${b.dept} · ${b.owner}`, emphasis: `已卡 ${b.days} 天` }));
+  }
+  if (/決策逾期|筆決策/.test(event)) {
+    return data.decisions
+      .filter((d) => d.status === "逾期")
+      .map((d) => ({
+        title: d.title,
+        meta: `指派 ${d.assignedDept}`,
+        emphasis: `逾期 ${Math.max(0, Math.round((+NOW - +new Date(d.dueDate)) / 86400000))} 天`,
+      }));
+  }
+  if (/員工過載|位員工/.test(event)) {
+    // 簡化：列出當前負責活躍卡點數最多的員工
+    const counter: Record<string, { dept: string; count: number }> = {};
+    data.blockers.filter((b) => b.status !== "resolved").forEach((b) => {
+      if (!b.owner) return;
+      if (!counter[b.owner]) counter[b.owner] = { dept: b.dept, count: 0 };
+      counter[b.owner].count++;
+    });
+    return Object.entries(counter)
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 5)
+      .map(([name, info]) => ({
+        title: name,
+        meta: info.dept,
+        emphasis: `負責 ${info.count} 件活躍卡點`,
+      }));
+  }
+  if (/交接逾時/.test(event)) {
+    return data.handoffs
+      .filter((h) => h.status === "待簽收" && (h.hoursOverdue || 0) > 0)
+      .sort((a, b) => (b.hoursOverdue || 0) - (a.hoursOverdue || 0))
+      .map((h) => ({
+        title: h.title,
+        meta: `${h.from} → ${h.to}`,
+        emphasis: `逾時 ${h.hoursOverdue} 小時`,
+      }));
+  }
+  if (/單向溝通/.test(event)) {
+    return [{
+      title: "本週偵測到部門間溝通不對稱",
+      meta: "請查看組織分析頁的網絡圖",
+      emphasis: "查看詳細",
+    }];
+  }
+  if (/未交週報/.test(event)) {
+    const activeDepts = data.departments.filter((d) => d.active && d.name !== "營運與管理層").map((d) => d.name);
+    // 取最近一週的提交狀況
+    const recentReports = data.reports.filter((r) => {
+      const d = r.submittedAt ? new Date(r.submittedAt) : null;
+      if (!d) return false;
+      const daysAgo = (+NOW - +d) / 86400000;
+      return daysAgo <= 7;
+    });
+    const submitted = new Set(recentReports.map((r) => r.dept));
+    return activeDepts
+      .filter((d) => !submitted.has(d))
+      .map((d) => ({ title: d, meta: "本週尚未繳交週報", emphasis: "待繳" }));
+  }
+  return [];
+}
+
 const AXIS_LABELS = [
   { key: "blockerHealth",      short: "卡點健康", desc: "P95+ 卡點越少越健康" },
   { key: "decisionTimeliness", short: "決策及時", desc: "逾期決策越少越健康" },
@@ -50,6 +131,7 @@ export function OrgHealthCard({
   reports, handoffs, decisions, blockers, employees, departments, history, onNavigate,
 }: Props) {
   const [pinnedWeek, setPinnedWeek] = useState<number | null>(null);
+  const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
 
   const { series, current, avg, inflections } = useMemo(() => {
     const series = computeWeeklySeries(12, reports, handoffs, decisions, blockers, employees, departments, history);
@@ -182,6 +264,7 @@ export function OrgHealthCard({
                 onClick={(s: any) => {
                   if (s && s.activeTooltipIndex !== undefined && s.activeTooltipIndex !== null) {
                     setPinnedWeek((prev) => prev === s.activeTooltipIndex ? null : s.activeTooltipIndex);
+                    setExpandedEvent(null);
                   }
                 }}
                 style={{ cursor: "pointer" }}
@@ -262,30 +345,98 @@ export function OrgHealthCard({
                     </button>
                   </div>
                   {pinnedSnap.events.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {pinnedSnap.events.map((e, i) => {
-                        const tab = eventToTab(e);
-                        const clickable = !!(tab && onNavigate);
-                        return (
-                          <button
-                            key={i}
-                            onClick={() => clickable && onNavigate!(tab!)}
-                            disabled={!clickable}
-                            className={cn(
-                              "inline-flex items-center gap-1 px-2 py-1 rounded text-blue-700 font-medium border border-blue-100 transition",
-                              clickable
-                                ? "bg-white hover:bg-blue-100 hover:border-blue-300 cursor-pointer hover:shadow-sm"
-                                : "bg-white cursor-default",
-                            )}
+                    <>
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {pinnedSnap.events.map((e, i) => {
+                          const isExpanded = expandedEvent === e;
+                          return (
+                            <button
+                              key={i}
+                              onClick={() => setExpandedEvent(isExpanded ? null : e)}
+                              className={cn(
+                                "inline-flex items-center gap-1 px-2 py-1 rounded font-medium border transition cursor-pointer",
+                                isExpanded
+                                  ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                                  : "bg-white text-blue-700 border-blue-100 hover:bg-blue-100 hover:border-blue-300 hover:shadow-sm",
+                              )}
+                            >
+                              {e}
+                              <span className={cn(
+                                "text-[10px] transition",
+                                isExpanded ? "rotate-180 text-white" : "text-blue-400",
+                              )}>▾</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Inline 詳細項目展開區 */}
+                      <AnimatePresence>
+                        {expandedEvent && (
+                          <motion.div
+                            key={expandedEvent}
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.18 }}
+                            className="overflow-hidden mt-3"
                           >
-                            {e}
-                            {clickable && (
-                              <span className="text-blue-400 text-[10px]">→</span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
+                            {(() => {
+                              const items = resolveEventItems(expandedEvent, {
+                                blockers, decisions, handoffs, reports, departments,
+                              });
+                              const tab = eventToTab(expandedEvent);
+                              return (
+                                <div className="bg-white rounded-lg border border-blue-200 p-3">
+                                  <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-100">
+                                    <div className="text-[11px] font-bold text-slate-700">
+                                      {expandedEvent} <span className="text-slate-400 font-normal">· 共 {items.length} 項</span>
+                                    </div>
+                                    {tab && onNavigate && (
+                                      <button
+                                        onClick={() => onNavigate(tab)}
+                                        className="text-[10px] text-blue-600 hover:text-blue-700 font-bold hover:underline"
+                                      >
+                                        前往完整頁面 →
+                                      </button>
+                                    )}
+                                  </div>
+                                  {items.length === 0 ? (
+                                    <div className="text-[11px] text-slate-400 py-3 text-center">
+                                      目前無符合此事件的項目
+                                    </div>
+                                  ) : (
+                                    <div className="space-y-1">
+                                      {items.slice(0, 6).map((item, idx) => (
+                                        <div key={idx} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-50">
+                                          <div className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
+                                          <div className="flex-1 min-w-0">
+                                            <div className="text-[11px] font-bold text-slate-800 truncate">{item.title}</div>
+                                            {item.meta && (
+                                              <div className="text-[10px] text-slate-500 truncate mt-0.5">{item.meta}</div>
+                                            )}
+                                          </div>
+                                          {item.emphasis && (
+                                            <span className="text-[10px] font-bold text-blue-600 shrink-0">
+                                              {item.emphasis}
+                                            </span>
+                                          )}
+                                        </div>
+                                      ))}
+                                      {items.length > 6 && (
+                                        <div className="text-[10px] text-slate-400 text-center pt-1">
+                                          還有 {items.length - 6} 項…
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </>
                   )}
                 </div>
               </motion.div>
