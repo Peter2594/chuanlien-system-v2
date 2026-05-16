@@ -72,9 +72,19 @@ export function computeHealthSnapshot(
   }
 
   // ===== 2. 決策及時 =====
+  // 「當週時點」逾期：已決議 + 截止日已過 + (還沒完成 或 完成在 asOf 之後)
+  const isOverdueAtAsOf = (d: Decision) => {
+    if (!d.dueDate || d.dueDate === "即時生效") return false;
+    if (new Date(d.dueDate) >= asOf) return false;
+    if (d.completedAt && new Date(d.completedAt) <= asOf) return false;
+    return true;
+  };
   let decisionTimeliness = 100;
-  const overdueDec = activeDecisions.filter((d) => d.status === "逾期").length;
-  const completed = activeDecisions.filter((d) => d.status === "已完成" && d.completedAt && d.decidedAt);
+  const overdueDec = activeDecisions.filter(isOverdueAtAsOf).length;
+  // 「當週時點」已完成：completedAt ≤ asOf
+  const completed = activeDecisions.filter(
+    (d) => d.completedAt && d.decidedAt && new Date(d.completedAt) <= asOf,
+  );
   if (completed.length > 0) {
     const days = completed.map((d) => (+new Date(d.completedAt!) - +new Date(d.decidedAt)) / 86400000);
     const avg = days.reduce((s, v) => s + v, 0) / days.length;

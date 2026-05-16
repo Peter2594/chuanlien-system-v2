@@ -73,11 +73,14 @@ function resolveEventItems(
         if (d.completedAt && new Date(d.completedAt) <= asOf) return false;
         return true;
       })
-      .map((d) => ({
-        title: d.title,
-        meta: `指派 ${d.assignedDept}`,
-        emphasis: `當週逾期 ${Math.max(0, Math.round((asOfMs - +new Date(d.dueDate)) / 86400000))} 天`,
-      }));
+      .map((d) => {
+        const days = Math.max(0, Math.round((asOfMs - +new Date(d.dueDate)) / 86400000));
+        return {
+          title: d.title,
+          meta: `指派 ${d.assignedDept}`,
+          emphasis: days === 0 ? "當週剛逾期" : `當週逾期 ${days} 天`,
+        };
+      });
   }
   if (/員工過載|位員工/.test(event)) {
     // 算每位員工在 asOf 當下負責的活躍卡點數
