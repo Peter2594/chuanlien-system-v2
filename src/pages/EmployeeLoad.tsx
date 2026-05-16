@@ -41,12 +41,15 @@ export default function EmployeeLoadPage({ reports, handoffs, employees }: Props
     byDept[l.dept].push(l);
   });
 
-  const deptBarData = Object.entries(byDept).map(([d, list]) => ({
-    dept: d.replace("營運與管理層", "管理").replace("投資研究部", "投研").replace("業務開發部", "業開").replace("資產管理部", "資管"),
-    fullDept: d,
-    avg: +(list.reduce((s, e) => s + e.loadScore, 0) / list.length).toFixed(1),
-    count: list.length,
-  }));
+  // 管理層用別的指標（決策數、簽核數），不適用員工負載維度，過濾掉
+  const deptBarData = Object.entries(byDept)
+    .filter(([d, list]) => d !== "營運與管理層" && list.length > 0)
+    .map(([d, list]) => ({
+      dept: d.replace("投資研究部", "投研").replace("業務開發部", "業開").replace("資產管理部", "資管"),
+      fullDept: d,
+      avg: +(list.reduce((s, e) => s + e.loadScore, 0) / list.length).toFixed(1),
+      count: list.length,
+    }));
 
   // 根據 filter 篩選出顯示的員工
   const filteredEmps: EL[] | null =

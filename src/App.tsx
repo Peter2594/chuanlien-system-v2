@@ -90,10 +90,13 @@ export default function App() {
           userProfile={data.userProfile}
           authEmail={data.authUser?.email}
           onLogout={data.logout}
-          notifications={
-            data.decisions.filter((d) => d.status === "逾期").length +
-            data.handoffs.filter((h) => h.status === "待簽收").length
-          }
+          decisions={data.decisions}
+          handoffs={data.handoffs}
+          blockers={data.blockers}
+          reports={data.reports}
+          history={data.history}
+          departments={data.departments}
+          onNavigate={setActiveTab}
         />
 
         <div className="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar">

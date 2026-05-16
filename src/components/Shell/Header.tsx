@@ -1,6 +1,9 @@
-import { Bell, ShieldCheck, LogOut } from "lucide-react";
+import { ShieldCheck, LogOut } from "lucide-react";
 import type { UserProfile } from "../../lib/firebase";
 import { ROLE_LABELS } from "../../lib/firebase";
+import { NotificationPanel } from "./NotificationPanel";
+import type { TabId } from "./Sidebar";
+import type { Decision, Handoff, Blocker, Report, HistoryCase, Department } from "../../lib/types";
 
 interface HeaderProps {
   title: string;
@@ -8,10 +11,19 @@ interface HeaderProps {
   userProfile?: UserProfile | null;
   authEmail?: string | null;
   onLogout: () => void;
-  notifications?: number;
+  decisions: Decision[];
+  handoffs: Handoff[];
+  blockers: Blocker[];
+  reports: Report[];
+  history: HistoryCase[];
+  departments: Department[];
+  onNavigate: (tab: TabId) => void;
 }
 
-export function Header({ title, subtitle, userProfile, authEmail, onLogout, notifications = 0 }: HeaderProps) {
+export function Header({
+  title, subtitle, userProfile, authEmail, onLogout,
+  decisions, handoffs, blockers, reports, history, departments, onNavigate,
+}: HeaderProps) {
   const initials = (userProfile?.displayName || authEmail || "?")
     .charAt(0)
     .toUpperCase();
@@ -35,12 +47,15 @@ export function Header({ title, subtitle, userProfile, authEmail, onLogout, noti
         </div>
 
         <div className="flex items-center gap-4">
-          <button className="relative p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-full transition-colors">
-            <Bell size={20} />
-            {notifications > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
-            )}
-          </button>
+          <NotificationPanel
+            decisions={decisions}
+            handoffs={handoffs}
+            blockers={blockers}
+            reports={reports}
+            history={history}
+            departments={departments}
+            onNavigate={onNavigate}
+          />
 
           <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
             <div className="text-right hidden sm:block">
