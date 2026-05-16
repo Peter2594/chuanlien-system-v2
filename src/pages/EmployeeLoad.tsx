@@ -68,10 +68,12 @@ export default function EmployeeLoadPage({ reports, handoffs, employees }: Props
     <div className="max-w-6xl mx-auto pb-8">
       {/* 一句話總結 */}
       <div className="mb-8">
-        <h1 className="text-2xl font-black text-slate-900 tracking-tight mb-2">
-          目前 <span className="text-red-500">{overload.length}</span> 位員工過載
+        <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-2">
+          員工負載分析
         </h1>
-        <p className="text-sm text-slate-500">點數據卡片或部門條看細節。</p>
+        <p className="text-sm text-slate-500">
+          深入比較各部門負載分布、點員工看詳細組成（本人案件 / 卡點 / 被提及 / 交接）與建議行動。
+        </p>
       </div>
 
       {/* 3 張 mini 統計 + 部門對比 chart */}

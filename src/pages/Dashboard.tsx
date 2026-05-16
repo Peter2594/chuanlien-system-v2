@@ -49,6 +49,8 @@ export default function Dashboard({
     const deptLoadMap: Record<string, number> = {};
     const deptCountMap: Record<string, number> = {};
     loads.forEach((l) => {
+      // 過濾管理層（用別的指標衡量），與 EmployeeLoad 頁一致
+      if (l.dept === "營運與管理層") return;
       deptLoadMap[l.dept] = (deptLoadMap[l.dept] || 0) + l.loadScore;
       deptCountMap[l.dept] = (deptCountMap[l.dept] || 0) + 1;
     });
@@ -186,62 +188,58 @@ export default function Dashboard({
           accentColor="text-red-500"
           accentBg="bg-red-500"
           title="員工負載"
-          subtitle="誰扛太重？誰閒置？"
+          subtitle="目前最該關心誰"
           onClick={() => onNav("employees")}
         >
-          <div className="flex items-baseline gap-3 mb-5">
-            <span className="text-5xl font-black text-slate-900 tracking-tight">
+          {/* 主要數字 */}
+          <div className="flex items-baseline gap-3 mb-4">
+            <span className="text-6xl font-black text-slate-900 tracking-tight leading-none">
               {data.overloaded.length}
             </span>
-            <span className="text-sm text-slate-500 font-medium">人過載</span>
-            <span className="ml-auto text-[10px] font-mono text-slate-400">
-              Gini: <span className="text-slate-700 font-bold">{data.gini.toFixed(2)}</span>
-            </span>
+            <div>
+              <div className="text-sm text-slate-700 font-bold">人過載</div>
+              <div className="text-[10px] text-slate-400 font-mono">
+                Gini 係數 {data.gini.toFixed(2)}
+              </div>
+            </div>
           </div>
 
-          {/* 最重的那個人 */}
+          {/* 最該關心的那個人 */}
           {data.topLoaded && (
-            <div className="bg-slate-50 rounded-xl p-3 mb-4">
-              <div className="text-[10px] text-slate-400 mb-1 tracking-wide font-bold">
-                CONCENTRATION RISK · 風險最高
+            <div className={cn(
+              "rounded-xl p-4 border-l-4",
+              data.topLoaded.percentile >= 90
+                ? "bg-red-50 border-red-500"
+                : data.topLoaded.percentile >= 75
+                ? "bg-amber-50 border-amber-500"
+                : "bg-slate-50 border-slate-300",
+            )}>
+              <div className="text-[10px] text-slate-500 mb-2 tracking-wide font-bold">
+                負載最重的員工
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-slate-900">{data.topLoaded.name}</span>
-                <span className={cn(
-                  "text-xs font-mono font-bold",
-                  data.topLoaded.percentile >= 90 ? "text-red-500" : "text-amber-600"
-                )}>
-                  P{data.topLoaded.percentile}
-                </span>
-              </div>
-              <div className="text-[10px] text-slate-500 mt-0.5">
-                {data.topLoaded.dept} · 加權分數 {data.topLoaded.loadScore.toFixed(1)}
+                <div className="min-w-0 flex-1">
+                  <div className="text-base font-bold text-slate-900 truncate">{data.topLoaded.name}</div>
+                  <div className="text-[11px] text-slate-500 mt-0.5 truncate">
+                    {data.topLoaded.dept} · {data.topLoaded.role}
+                  </div>
+                </div>
+                <div className="text-right shrink-0 ml-3">
+                  <div className={cn(
+                    "text-2xl font-black leading-none",
+                    data.topLoaded.percentile >= 90 ? "text-red-500" : "text-amber-600",
+                  )}>
+                    P{data.topLoaded.percentile}
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-1">負載分 {data.topLoaded.loadScore.toFixed(1)}</div>
+                </div>
               </div>
             </div>
           )}
 
-          {/* 部門 mini bar */}
-          <div className="space-y-2 mb-2">
-            {data.deptLoads.slice(0, 4).map((d) => {
-              const max = data.deptLoads[0]?.avg || 1;
-              const pct = (d.avg / max) * 100;
-              return (
-                <div key={d.dept} className="flex items-center gap-2 text-[10px]">
-                  <span className="w-16 text-slate-500 truncate">{d.dept}</span>
-                  <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${pct}%` }}
-                      transition={{ duration: 0.8 }}
-                      className={cn("h-full rounded-full", pct > 80 ? "bg-red-400" : "bg-slate-400")}
-                    />
-                  </div>
-                  <span className="w-8 text-right text-slate-600 font-mono font-bold">
-                    {d.avg.toFixed(0)}
-                  </span>
-                </div>
-              );
-            })}
+          {/* 引導跳轉 */}
+          <div className="mt-4 text-[11px] text-slate-400 italic flex items-center gap-1">
+            <span>→ 點此頁卡看完整部門對比、員工 breakdown、建議行動</span>
           </div>
         </HeroCard>
 
