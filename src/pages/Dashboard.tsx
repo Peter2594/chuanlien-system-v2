@@ -16,6 +16,7 @@ import type {
 } from "../lib/types";
 import type { UserProfile } from "../lib/firebase";
 import type { TabId } from "../components/Shell/Sidebar";
+import { OrgHealthCard } from "../components/OrgHealthCard";
 
 interface DashboardProps {
   reports: Report[];
@@ -365,6 +366,19 @@ export default function Dashboard({
               })}
           </div>
         </HeroCard>
+      </div>
+
+      {/* === 組織健康度儀表板（雷達 + 趨勢） === */}
+      <div className="mb-8">
+        <OrgHealthCard
+          reports={reports}
+          handoffs={handoffs}
+          decisions={decisions}
+          blockers={blockers}
+          employees={employees}
+          departments={departments}
+          history={history}
+        />
       </div>
 
       {/* === 底部：3 個次要入口 (組織分析、決策追蹤、會議準備) === */}

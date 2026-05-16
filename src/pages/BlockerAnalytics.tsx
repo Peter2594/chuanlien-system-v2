@@ -8,6 +8,7 @@ import { Pill } from "../components/ui/Pill";
 import { cn } from "../lib/utils";
 import { BLOCKER_CATEGORIES } from "../lib/constants";
 import { analyzeBlockerRecord, stats } from "../lib/algorithms";
+import { SimilarCases } from "../components/SimilarCases";
 import type { Blocker, HistoryCase } from "../lib/types";
 
 interface Props {
@@ -236,6 +237,15 @@ export default function BlockerAnalyticsPage({ blockers, history }: Props) {
                                   {a.level === "normal"   && "仍在正常處理時程內。"}
                                 </div>
                               )}
+
+                              {/* 智能案件推薦 - 用 BM25F 找類似歷史案 */}
+                              <div className="mt-4">
+                                <SimilarCases
+                                  query={`${a.blocker?.title || ""} ${a.blocker?.description || ""} ${a.categoryInfo?.label || ""} ${a.blocker?.caseId || ""}`}
+                                  history={history}
+                                  limit={3}
+                                />
+                              </div>
                             </div>
                           </motion.div>
                         )}

@@ -8,18 +8,20 @@ import { Modal } from "../components/ui/Modal";
 import { Pill } from "../components/ui/Pill";
 import { cn } from "../lib/utils";
 import { NOW } from "../lib/dateUtils";
-import type { Handoff } from "../lib/types";
+import type { Handoff, HistoryCase } from "../lib/types";
+import { SimilarCases } from "../components/SimilarCases";
 
 interface Props {
   handoffs: Handoff[];
   setHandoffs: (h: Handoff[] | ((p: Handoff[]) => Handoff[])) => void;
   departments: { name: string; active: boolean }[];
+  history: HistoryCase[];
 }
 
 type Filter = null | "待簽收" | "已簽收";
 const today = () => NOW.toISOString().slice(0, 10);
 
-export default function HandoffPage({ handoffs, setHandoffs, departments }: Props) {
+export default function HandoffPage({ handoffs, setHandoffs, departments, history }: Props) {
   const [viewing, setViewing] = useState<Handoff | null>(null);
   const [creating, setCreating] = useState(false);
   const [filter, setFilter] = useState<Filter>(null);
@@ -153,6 +155,14 @@ export default function HandoffPage({ handoffs, setHandoffs, departments }: Prop
               <KV label="交接人" value={viewing.sender} />
               <KV label="接手人" value={viewing.receiver} />
             </div>
+
+            {/* 智能案件推薦 */}
+            <SimilarCases
+              query={`${viewing.title} ${viewing.background || ""} ${viewing.caseId || ""}`}
+              history={history}
+              limit={3}
+            />
+
             <div className="flex justify-between pt-3 border-t border-slate-100">
               <Button variant="ghost" size="sm" icon={<Trash2 size={12} />} onClick={() => deleteOne(viewing)}>刪除</Button>
               {viewing.status === "待簽收" && (

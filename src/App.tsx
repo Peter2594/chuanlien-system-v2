@@ -126,6 +126,7 @@ export default function App() {
               handoffs={data.handoffs}
               setHandoffs={data.setHandoffs}
               departments={data.departments}
+              history={data.history}
             />
           )}
           {activeTab === "decisions"  && (
