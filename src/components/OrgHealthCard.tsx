@@ -8,7 +8,7 @@ import {
   ReferenceDot, Legend,
 } from "recharts";
 import { motion, AnimatePresence } from "motion/react";
-import { Activity, TrendingUp, AlertCircle } from "lucide-react";
+import { Activity, TrendingUp, AlertCircle, X, MousePointerClick } from "lucide-react";
 import { computeWeeklySeries, computeHealthSnapshot, detectInflectionPoints, healthLevel } from "../lib/orgHealth";
 import { NOW } from "../lib/dateUtils";
 import { cn } from "../lib/utils";
@@ -36,7 +36,7 @@ const AXIS_LABELS = [
 export function OrgHealthCard({
   reports, handoffs, decisions, blockers, employees, departments, history,
 }: Props) {
-  const [hoverWeek, setHoverWeek] = useState<number | null>(null);
+  const [pinnedWeek, setPinnedWeek] = useState<number | null>(null);
 
   const { series, current, avg, inflections } = useMemo(() => {
     const series = computeWeeklySeries(12, reports, handoffs, decisions, blockers, employees, departments, history);
@@ -77,7 +77,8 @@ export function OrgHealthCard({
   const level = healthLevel(current.overall);
   const prevOverall = series.length >= 2 ? series[series.length - 2].overall : current.overall;
   const delta = +(current.overall - prevOverall).toFixed(1);
-  const hoverSnap = hoverWeek !== null ? series[hoverWeek] : null;
+  const pinnedSnap = pinnedWeek !== null ? series[pinnedWeek] : null;
+  const pinnedWeekLabel = pinnedWeek !== null ? trendData[pinnedWeek].week : "";
 
   // 顯示哪些維度最弱（前 2 名）
   const weakAxes = [...AXIS_LABELS]
@@ -165,20 +166,37 @@ export function OrgHealthCard({
               <LineChart
                 data={trendData}
                 margin={{ top: 8, right: 16, bottom: 4, left: 0 }}
-                onMouseMove={(s: any) => {
-                  if (s && s.activeTooltipIndex !== undefined) setHoverWeek(s.activeTooltipIndex);
+                onClick={(s: any) => {
+                  if (s && s.activeTooltipIndex !== undefined && s.activeTooltipIndex !== null) {
+                    setPinnedWeek((prev) => prev === s.activeTooltipIndex ? null : s.activeTooltipIndex);
+                  }
                 }}
-                onMouseLeave={() => setHoverWeek(null)}
+                style={{ cursor: "pointer" }}
               >
                 <XAxis dataKey="week" tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} />
                 <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} />
                 <Tooltip
                   contentStyle={{ borderRadius: 8, border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.12)", fontSize: 11 }}
                   formatter={(v: any) => [`${(+v).toFixed(1)} 分`, "健康度"]}
+                  labelFormatter={(label: any) => `${label} · 點圖看當週事件`}
                 />
                 <Line type="monotone" dataKey="overall" stroke="#3b82f6" strokeWidth={2.5}
-                  dot={{ r: 3, fill: "#3b82f6", strokeWidth: 0 }}
-                  activeDot={{ r: 5, fill: "#1d4ed8" }} />
+                  dot={(props: any) => {
+                    const { cx, cy, index } = props;
+                    const isPinned = pinnedWeek === index;
+                    return (
+                      <circle
+                        key={`dot-${index}`}
+                        cx={cx} cy={cy}
+                        r={isPinned ? 6 : 3}
+                        fill={isPinned ? "#1d4ed8" : "#3b82f6"}
+                        stroke={isPinned ? "#fff" : "none"}
+                        strokeWidth={isPinned ? 3 : 0}
+                        style={{ cursor: "pointer" }}
+                      />
+                    );
+                  }}
+                  activeDot={{ r: 6, fill: "#1d4ed8", stroke: "#fff", strokeWidth: 2 }} />
                 {inflections.map((i) => (
                   <ReferenceDot key={i} x={trendData[i].week} y={trendData[i].overall}
                     r={5} fill="#ef4444" stroke="#fff" strokeWidth={2} />
@@ -187,39 +205,76 @@ export function OrgHealthCard({
             </ResponsiveContainer>
           </div>
 
-          {/* 拐點 / hover 提示區 */}
+          {/* 點擊後 pin 住的事件提示區 */}
           <AnimatePresence mode="wait">
-            {hoverSnap && hoverSnap.events.length > 0 ? (
+            {pinnedSnap ? (
               <motion.div
-                key={hoverSnap.weekISO}
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                className="mt-3 px-3 py-2 rounded-lg bg-blue-50 border border-blue-100 text-xs"
+                key={pinnedSnap.weekISO}
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mt-3 overflow-hidden"
               >
-                <div className="flex items-center gap-1.5 text-blue-700 font-bold mb-1">
-                  <AlertCircle size={12} />
-                  該週事件
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {hoverSnap.events.map((e, i) => (
-                    <span key={i} className="px-1.5 py-0.5 bg-white rounded text-blue-700 font-medium">
-                      {e}
-                    </span>
-                  ))}
+                <div className={cn(
+                  "px-4 py-3 rounded-xl border text-xs",
+                  pinnedSnap.events.length > 0
+                    ? "bg-blue-50 border-blue-200"
+                    : "bg-emerald-50 border-emerald-200",
+                )}>
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div>
+                      <div className={cn(
+                        "flex items-center gap-1.5 font-bold mb-1",
+                        pinnedSnap.events.length > 0 ? "text-blue-700" : "text-emerald-700",
+                      )}>
+                        <AlertCircle size={12} />
+                        {pinnedWeekLabel} · 健康度 {pinnedSnap.overall.toFixed(1)} 分
+                      </div>
+                      <div className="text-[10px] text-slate-500">
+                        {pinnedSnap.events.length > 0
+                          ? `該週發生 ${pinnedSnap.events.length} 件事`
+                          : "該週運作平穩，無重大事件"}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setPinnedWeek(null)}
+                      className={cn(
+                        "p-1 rounded-full transition shrink-0",
+                        pinnedSnap.events.length > 0
+                          ? "hover:bg-blue-100 text-blue-600"
+                          : "hover:bg-emerald-100 text-emerald-600",
+                      )}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                  {pinnedSnap.events.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {pinnedSnap.events.map((e, i) => (
+                        <span key={i} className="px-2 py-0.5 bg-white rounded text-blue-700 font-medium border border-blue-100">
+                          {e}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </motion.div>
-            ) : inflections.length > 0 ? (
+            ) : (
               <motion.div
                 key="default"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="mt-3 text-xs text-slate-500 flex items-center gap-1.5"
               >
-                <TrendingUp size={12} className="text-slate-400" />
-                <span>偵測到 <strong className="text-red-600">{inflections.length}</strong> 個拐點 — 滑鼠移到趨勢線看當週事件</span>
+                <MousePointerClick size={12} className="text-slate-400" />
+                <span>
+                  點趨勢線任一週看當週事件
+                  {inflections.length > 0 && (
+                    <>，或檢視 <strong className="text-red-600">{inflections.length}</strong> 個拐點</>
+                  )}
+                </span>
               </motion.div>
-            ) : null}
+            )}
           </AnimatePresence>
         </div>
       </div>
