@@ -14,6 +14,7 @@ import { NOW } from "../lib/dateUtils";
 import { cn } from "../lib/utils";
 import type { Report, Handoff, Decision, Blocker, Employee, Department, HistoryCase } from "../lib/types";
 import type { TabId } from "./Shell/Sidebar";
+import { analyzeBlockerRecord, analyzeEmployeeLoad } from "../lib/algorithms";
 
 interface Props {
   reports: Report[];
@@ -41,27 +42,38 @@ function eventToTab(event: string): TabId | null {
 function resolveEventItems(
   event: string,
   asOf: Date,
-  data: { blockers: Blocker[]; decisions: Decision[]; handoffs: Handoff[]; reports: Report[]; departments: Department[] },
+  data: { blockers: Blocker[]; decisions: Decision[]; handoffs: Handoff[]; reports: Report[]; departments: Department[]; employees: Employee[]; history: HistoryCase[] },
 ): { title: string; meta?: string; emphasis?: string }[] {
   const asOfMs = +asOf;
   const daysAt = (createdAt: string) =>
     Math.max(0, Math.round((asOfMs - +new Date(createdAt)) / 86400000));
 
+  // 卡點分析：用 analyzeBlockerRecord 取得 level，與 chip 的計算來源一致
+  // 注意：analyzeBlockerRecord 用 new Date() 算 currentDays，所以歷史週的 days 會偏大；
+  //       為了讓 chip 與 inline 數量一致，這裡刻意用同樣的方式分析。
+  const analyzeAll = () => data.blockers
+    .filter((b) => b.status !== "resolved" && new Date(b.createdAt) <= asOf)
+    .map((b) => ({ blocker: b, ana: analyzeBlockerRecord(b, data.blockers, data.history) }));
+
   if (/極高風險卡點/.test(event)) {
-    return data.blockers
-      .filter((b) => new Date(b.createdAt) <= asOf)
-      .map((b) => ({ ...b, days: daysAt(b.createdAt) }))
-      .filter((b) => b.days >= 28)
-      .sort((a, b) => b.days - a.days)
-      .map((b) => ({ title: b.title, meta: `${b.dept} · ${b.owner}`, emphasis: `當週已卡 ${b.days} 天` }));
+    return analyzeAll()
+      .filter(({ ana }) => ana.level === "critical")
+      .sort((a, b) => (b.ana.percentile || 0) - (a.ana.percentile || 0))
+      .map(({ blocker, ana }) => ({
+        title: blocker.title,
+        meta: `${blocker.dept} · ${blocker.owner}`,
+        emphasis: `當週已卡 ${ana.currentDays} 天`,
+      }));
   }
   if (/高風險卡點/.test(event)) {
-    return data.blockers
-      .filter((b) => new Date(b.createdAt) <= asOf)
-      .map((b) => ({ ...b, days: daysAt(b.createdAt) }))
-      .filter((b) => b.days >= 20 && b.days < 28)
-      .sort((a, b) => b.days - a.days)
-      .map((b) => ({ title: b.title, meta: `${b.dept} · ${b.owner}`, emphasis: `當週已卡 ${b.days} 天` }));
+    return analyzeAll()
+      .filter(({ ana }) => ana.level === "high")
+      .sort((a, b) => (b.ana.percentile || 0) - (a.ana.percentile || 0))
+      .map(({ blocker, ana }) => ({
+        title: blocker.title,
+        meta: `${blocker.dept} · ${blocker.owner}`,
+        emphasis: `當週已卡 ${ana.currentDays} 天`,
+      }));
   }
   if (/決策逾期|筆決策/.test(event)) {
     // 當週的「逾期」= 已決議 + 截止日已過 + (尚未完成 或 完成在 asOf 之後)
@@ -83,22 +95,23 @@ function resolveEventItems(
       });
   }
   if (/員工過載|位員工/.test(event)) {
-    // 算每位員工在 asOf 當下負責的活躍卡點數
-    const counter: Record<string, { dept: string; count: number }> = {};
-    data.blockers
-      .filter((b) => new Date(b.createdAt) <= asOf)
-      .forEach((b) => {
-        if (!b.owner) return;
-        if (!counter[b.owner]) counter[b.owner] = { dept: b.dept, count: 0 };
-        counter[b.owner].count++;
-      });
-    return Object.entries(counter)
-      .sort((a, b) => b[1].count - a[1].count)
-      .slice(0, 5)
-      .map(([name, info]) => ({
-        title: name,
-        meta: info.dept,
-        emphasis: `當週負責 ${info.count} 件卡點`,
+    // 用 analyzeEmployeeLoad 取得當週時點的負載，篩 level === "overload"
+    // 與 chip 的計算來源一致
+    const weekStart = +asOf - 7 * 86400000;
+    const weekReports = data.reports.filter((r) => {
+      if (!r.submittedAt) return false;
+      const t = +new Date(r.submittedAt);
+      return t > weekStart && t <= asOfMs;
+    });
+    const activeHandoffs = data.handoffs.filter((h) => new Date(h.createdAt) <= asOf);
+    const loads = analyzeEmployeeLoad(weekReports, activeHandoffs, data.employees);
+    return loads
+      .filter((l) => l.level === "overload")
+      .sort((a, b) => b.loadScore - a.loadScore)
+      .map((l) => ({
+        title: l.name,
+        meta: `${l.dept} · ${l.role}`,
+        emphasis: `負載分 ${l.loadScore.toFixed(1)} · P${l.percentile}`,
       }));
   }
   if (/交接逾時/.test(event)) {
@@ -407,7 +420,7 @@ export function OrgHealthCard({
                               const weeksBack = series.length - 1 - (pinnedWeek ?? series.length - 1);
                               asOf.setDate(asOf.getDate() - weeksBack * 7);
                               const items = resolveEventItems(expandedEvent, asOf, {
-                                blockers, decisions, handoffs, reports, departments,
+                                blockers, decisions, handoffs, reports, departments, employees, history,
                               });
                               const tab = eventToTab(expandedEvent);
                               return (
