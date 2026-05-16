@@ -378,6 +378,7 @@ export default function Dashboard({
           employees={employees}
           departments={departments}
           history={history}
+          onNavigate={onNav}
         />
       </div>
 

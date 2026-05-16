@@ -13,6 +13,7 @@ import { computeWeeklySeries, computeHealthSnapshot, detectInflectionPoints, hea
 import { NOW } from "../lib/dateUtils";
 import { cn } from "../lib/utils";
 import type { Report, Handoff, Decision, Blocker, Employee, Department, HistoryCase } from "../lib/types";
+import type { TabId } from "./Shell/Sidebar";
 
 interface Props {
   reports: Report[];
@@ -22,6 +23,18 @@ interface Props {
   employees: Employee[];
   departments: Department[];
   history: HistoryCase[];
+  onNavigate?: (tab: TabId) => void;
+}
+
+// 把事件字串對應到該跳去的分頁
+function eventToTab(event: string): TabId | null {
+  if (/卡點/.test(event)) return "analytics";
+  if (/決策/.test(event)) return "decisions";
+  if (/交接/.test(event)) return "handoff";
+  if (/過載|員工/.test(event)) return "employees";
+  if (/單向溝通|部門/.test(event) && !/未交週報/.test(event)) return "orgnetwork";
+  if (/週報/.test(event)) return "report";
+  return null;
 }
 
 const AXIS_LABELS = [
@@ -34,7 +47,7 @@ const AXIS_LABELS = [
 ];
 
 export function OrgHealthCard({
-  reports, handoffs, decisions, blockers, employees, departments, history,
+  reports, handoffs, decisions, blockers, employees, departments, history, onNavigate,
 }: Props) {
   const [pinnedWeek, setPinnedWeek] = useState<number | null>(null);
 
@@ -250,11 +263,28 @@ export function OrgHealthCard({
                   </div>
                   {pinnedSnap.events.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
-                      {pinnedSnap.events.map((e, i) => (
-                        <span key={i} className="px-2 py-0.5 bg-white rounded text-blue-700 font-medium border border-blue-100">
-                          {e}
-                        </span>
-                      ))}
+                      {pinnedSnap.events.map((e, i) => {
+                        const tab = eventToTab(e);
+                        const clickable = !!(tab && onNavigate);
+                        return (
+                          <button
+                            key={i}
+                            onClick={() => clickable && onNavigate!(tab!)}
+                            disabled={!clickable}
+                            className={cn(
+                              "inline-flex items-center gap-1 px-2 py-1 rounded text-blue-700 font-medium border border-blue-100 transition",
+                              clickable
+                                ? "bg-white hover:bg-blue-100 hover:border-blue-300 cursor-pointer hover:shadow-sm"
+                                : "bg-white cursor-default",
+                            )}
+                          >
+                            {e}
+                            {clickable && (
+                              <span className="text-blue-400 text-[10px]">→</span>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
