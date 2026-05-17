@@ -104,10 +104,10 @@ export function computeHealthSnapshot(
   }
 
   // ===== 4. 負載均衡 =====
-  // analyzeEmployeeLoad 內部有 getDecayWeight 做時間衰減，
-  // 應傳完整 reports 讓它自己處理，與 EmployeeLoad 頁的計算一致
+  // analyzeEmployeeLoad 接 asOf 參數，依該時點計算時間衰減，
+  // 各週快照能反映當週的真實負載分布
   let loadBalance = 100;
-  const loads = analyzeEmployeeLoad(reports, activeHandoffs, employees);
+  const loads = analyzeEmployeeLoad(reports, activeHandoffs, employees, asOf);
   if (loads.length > 0) {
     const scores = loads.map((l) => l.loadScore).sort((a, b) => a - b);
     const total = scores.reduce((s, v) => s + v, 0) || 1;

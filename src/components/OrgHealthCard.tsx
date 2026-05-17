@@ -95,10 +95,10 @@ function resolveEventItems(
       });
   }
   if (/員工過載|位員工/.test(event)) {
-    // analyzeEmployeeLoad 內部有時間衰減，傳全部 reports 即可
+    // 傳 asOf 給 analyzeEmployeeLoad，依該時點計算時間衰減
     // 與 EmployeeLoad 頁、orgHealth snapshot 三邊一致
     const activeHandoffs = data.handoffs.filter((h) => new Date(h.createdAt) <= asOf);
-    const loads = analyzeEmployeeLoad(data.reports, activeHandoffs, data.employees);
+    const loads = analyzeEmployeeLoad(data.reports, activeHandoffs, data.employees, asOf);
     return loads
       .filter((l) => l.level === "overload")
       .sort((a, b) => b.loadScore - a.loadScore)

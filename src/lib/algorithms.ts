@@ -55,11 +55,15 @@ export function analyzeEmployeeLoad(
   reports: Report[],
   handoffs: Handoff[],
   employees: Employee[],
+  asOf: Date = NOW,
 ): EmployeeLoad[] {
+  const asOfMs = +asOf;
   const getDecayWeight = (weekStr: string): number => {
     const d = parseWeekStart(weekStr);
     if (!d) return 0;
-    const weeksAgo = Math.max(0, Math.round((+NOW - +d) / (86400000 * 7)));
+    // 未來週次（asOf 還沒到）不計入
+    if (+d > asOfMs) return 0;
+    const weeksAgo = Math.max(0, Math.round((asOfMs - +d) / (86400000 * 7)));
     if (weeksAgo >= TIME_DECAY.length) return 0;
     return TIME_DECAY[weeksAgo];
   };
@@ -110,7 +114,9 @@ export function analyzeEmployeeLoad(
     handoffs.forEach((h) => {
       if (h.sender !== emp.name && h.receiver !== emp.name) return;
       const hd = h.createdAt ? new Date(h.createdAt) : null;
-      const weeksAgo = hd ? Math.max(0, Math.round((+NOW - +hd) / (86400000 * 7))) : 4;
+      // 未來建立的交接（asOf 還沒到）不計入
+      if (hd && +hd > asOfMs) return;
+      const weeksAgo = hd ? Math.max(0, Math.round((asOfMs - +hd) / (86400000 * 7))) : 4;
       const decay = weeksAgo < TIME_DECAY.length ? TIME_DECAY[weeksAgo] : 0;
       if (decay === 0) return;
       if (h.sender === emp.name) asHandoffSender++;
