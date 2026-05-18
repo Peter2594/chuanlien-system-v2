@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, Heart, X } from "lucide-react";
+import { AlertTriangle, Heart, X, Calendar } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Card } from "../components/ui/Card";
 import { Modal } from "../components/ui/Modal";
 import { cn } from "../lib/utils";
 import { analyzeEmployeeLoad, type EmployeeLoad as EL } from "../lib/algorithms";
+import { NOW } from "../lib/dateUtils";
 import type { Report, Handoff, Employee } from "../lib/types";
 
 interface Props {
@@ -25,9 +26,34 @@ const LEVEL_STYLE = {
 type FilterMode = null | "overload" | "idle" | { type: "dept"; name: string };
 
 export default function EmployeeLoadPage({ reports, handoffs, employees }: Props) {
-  const loads = useMemo(() => analyzeEmployeeLoad(reports, handoffs, employees), [reports, handoffs, employees]);
   const [selected, setSelected] = useState<EL | null>(null);
   const [filter, setFilter] = useState<FilterMode>(null);
+  const [weeksAgo, setWeeksAgo] = useState(0); // 0 = 本週
+
+  // asOf：依選定週次計算
+  const asOf = useMemo(() => {
+    const d = new Date(NOW);
+    d.setDate(d.getDate() - weeksAgo * 7);
+    return d;
+  }, [weeksAgo]);
+
+  const loads = useMemo(
+    () => analyzeEmployeeLoad(reports, handoffs, employees, asOf),
+    [reports, handoffs, employees, asOf],
+  );
+
+  // 上一週的負載作對比
+  const prevAsOf = useMemo(() => {
+    const d = new Date(asOf);
+    d.setDate(d.getDate() - 7);
+    return d;
+  }, [asOf]);
+  const prevLoads = useMemo(
+    () => analyzeEmployeeLoad(reports, handoffs, employees, prevAsOf),
+    [reports, handoffs, employees, prevAsOf],
+  );
+  const prevByName: Record<string, number> = {};
+  prevLoads.forEach((l) => { prevByName[l.name] = l.loadScore; });
 
   const overload = loads.filter((l) => l.level === "overload");
   const idle = loads.filter((l) => l.level === "idle");
@@ -67,14 +93,51 @@ export default function EmployeeLoadPage({ reports, handoffs, employees }: Props
   return (
     <div className="max-w-6xl mx-auto pb-8">
       {/* 一句話總結 */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-2">
-          員工負載分析
-        </h1>
-        <p className="text-sm text-slate-500">
-          深入比較各部門負載分布、點員工看詳細組成（本人案件 / 卡點 / 被提及 / 交接）與建議行動。
-        </p>
+      <div className="mb-6 flex items-end justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-2">
+            員工負載分析
+          </h1>
+          <p className="text-sm text-slate-500">
+            可切換週次回看過去負載分布、點員工看 4 元素 breakdown（案件 / 卡點 / 提及 / 交接）。
+          </p>
+        </div>
+        <div className="inline-flex items-center gap-2 text-xs text-slate-600">
+          <Calendar size={14} className="text-slate-400" />
+          <span>{weeksAgo === 0 ? "本週" : `${weeksAgo} 週前`}</span>
+          <span className="text-slate-400">
+            ({asOf.getFullYear()}/{String(asOf.getMonth() + 1).padStart(2, "0")}/{String(asOf.getDate()).padStart(2, "0")})
+          </span>
+        </div>
       </div>
+
+      {/* 週次選擇器 */}
+      <Card className="p-4 mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-[11px] text-slate-400 font-bold tracking-wider">VIEW BY WEEK</span>
+          <span className="text-[11px] text-slate-500">切換時點，看當週的負載分布</span>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {Array.from({ length: 12 }, (_, i) => i).map((w) => {
+            const isSelected = weeksAgo === w;
+            const label = w === 0 ? "本週" : w === 1 ? "上週" : `${w}週前`;
+            return (
+              <button
+                key={w}
+                onClick={() => { setWeeksAgo(w); setFilter(null); }}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-bold transition",
+                  isSelected
+                    ? "bg-slate-900 text-white shadow-sm"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900",
+                )}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      </Card>
 
       {/* 3 張 mini 統計 + 部門對比 chart */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-6">
@@ -98,7 +161,7 @@ export default function EmployeeLoadPage({ reports, handoffs, employees }: Props
             label="閒置人數"
             value={idle.length}
             color="text-slate-400"
-            hint="本週無記錄"
+            hint={weeksAgo === 0 ? "本週無記錄" : "當週無記錄"}
             active={filter === "idle"}
             onClick={() => setFilter(filter === "idle" ? null : "idle")}
           />
@@ -166,7 +229,13 @@ export default function EmployeeLoadPage({ reports, handoffs, employees }: Props
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {filteredEmps.map((emp, i) => (
-                  <EmployeeCard key={emp.name} emp={emp} index={i} onClick={() => setSelected(emp)} />
+                  <EmployeeCard
+                    key={emp.name}
+                    emp={emp}
+                    index={i}
+                    onClick={() => setSelected(emp)}
+                    prevScore={prevByName[emp.name]}
+                  />
                 ))}
               </div>
             )}
@@ -252,8 +321,9 @@ function ClickableStat({ label, value, color, hint, active, disabled, onClick }:
   );
 }
 
-function EmployeeCard({ emp, index, onClick }: { emp: EL; index: number; onClick: () => void; key?: any }) {
+function EmployeeCard({ emp, index, onClick, prevScore }: { emp: EL; index: number; onClick: () => void; prevScore?: number; key?: any }) {
   const style = LEVEL_STYLE[emp.level];
+  const delta = prevScore !== undefined ? +(emp.loadScore - prevScore).toFixed(1) : null;
   return (
     <motion.button
       initial={{ opacity: 0, y: 8 }}
@@ -280,6 +350,14 @@ function EmployeeCard({ emp, index, onClick }: { emp: EL; index: number; onClick
       <div className="flex items-baseline gap-2 mb-2">
         <span className={cn("text-2xl font-black", style.text)}>{emp.loadScore.toFixed(1)}</span>
         <span className="text-[10px] text-slate-400">分</span>
+        {delta !== null && delta !== 0 && (
+          <span className={cn(
+            "text-[10px] font-bold",
+            delta > 0 ? "text-red-500" : "text-emerald-600",
+          )}>
+            {delta > 0 ? "↑" : "↓"} {Math.abs(delta).toFixed(1)}
+          </span>
+        )}
         <span className="ml-auto text-[10px] text-slate-500 font-mono">P{emp.percentile}</span>
       </div>
 
