@@ -17,6 +17,7 @@ import BlockerAnalytics from "./pages/BlockerAnalytics";
 import OrgAnalytics from "./pages/OrgAnalytics";
 import MeetingPrep from "./pages/MeetingPrep";
 import LineBot from "./pages/LineBot";
+import WhatIf from "./pages/WhatIf";
 import { useAppData } from "./hooks/useAppData";
 
 export default function App() {
@@ -57,6 +58,7 @@ export default function App() {
     analytics:  "卡點分析",
     orgnetwork: "組織分析",
     meetings:   "會議準備",
+    whatif:     "What-if 模擬",
     linebot:    "LINE Bot 推播",
   };
   const subtitleMap: Record<TabId, string> = {
@@ -69,6 +71,7 @@ export default function App() {
     analytics:  "Blocker Statistics",
     orgnetwork: "Organization Analytics",
     meetings:   "Meeting Prep",
+    whatif:     "What-if Simulator",
     linebot:    "Push Notifications",
   };
 
@@ -135,6 +138,11 @@ export default function App() {
               setDecisions={data.setDecisions}
               departments={data.departments}
               userProfile={data.userProfile}
+              reports={data.reports}
+              handoffs={data.handoffs}
+              blockers={data.blockers}
+              employees={data.employees}
+              history={data.history}
             />
           )}
           {activeTab === "employees"  && (
@@ -166,6 +174,17 @@ export default function App() {
               decisions={data.decisions}
               handoffs={data.handoffs}
               blockers={data.blockers}
+            />
+          )}
+          {activeTab === "whatif"     && (
+            <WhatIf
+              reports={data.reports}
+              handoffs={data.handoffs}
+              decisions={data.decisions}
+              blockers={data.blockers}
+              employees={data.employees}
+              departments={data.departments}
+              history={data.history}
             />
           )}
           {activeTab === "linebot"    && (

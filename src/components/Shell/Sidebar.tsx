@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, FileText, ArrowLeftRight, Gavel,
   Users, Search, AlertCircle, Network, Calendar, MessageSquare,
-  Menu, X,
+  Menu, X, FlaskConical,
   type LucideIcon,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -9,7 +9,7 @@ import { cn } from "../../lib/utils";
 
 export type TabId =
   | "dashboard" | "report" | "handoff" | "decisions" | "employees"
-  | "history" | "analytics" | "orgnetwork" | "meetings" | "linebot";
+  | "history" | "analytics" | "orgnetwork" | "meetings" | "linebot" | "whatif";
 
 interface NavConfig {
   id: TabId;
@@ -28,6 +28,7 @@ export const NAV: NavConfig[] = [
   { id: "analytics",  icon: AlertCircle,     label: "Blocker 卡點分析",    roles: ["admin", "manager"] },
   { id: "orgnetwork", icon: Network,         label: "OrgAnalytics 組織",   roles: ["admin"] },
   { id: "meetings",   icon: Calendar,        label: "MeetingPrep 會議",    roles: ["admin"] },
+  { id: "whatif",     icon: FlaskConical,    label: "What-if 決策模擬",    roles: ["admin", "manager"] },
   { id: "linebot",    icon: MessageSquare,   label: "LineBot 推播",        roles: ["admin", "manager", "member"] },
 ];
 

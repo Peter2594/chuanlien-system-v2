@@ -7,14 +7,20 @@ import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
 import { cn } from "../lib/utils";
 import { NOW } from "../lib/dateUtils";
-import type { Decision } from "../lib/types";
+import type { Decision, Report, Handoff, Blocker, Employee, HistoryCase, Department } from "../lib/types";
 import type { UserProfile } from "../lib/firebase";
+import { analyzeDecisionImpact, computeLeaderScores } from "../lib/decisionImpact";
 
 interface Props {
   decisions: Decision[];
   setDecisions: (d: Decision[] | ((p: Decision[]) => Decision[])) => void;
-  departments: { name: string; active: boolean }[];
+  departments: Department[];
   userProfile: UserProfile | null;
+  reports: Report[];
+  handoffs: Handoff[];
+  blockers: Blocker[];
+  employees: Employee[];
+  history: HistoryCase[];
 }
 
 const STATUS_STYLE = {
@@ -26,7 +32,10 @@ const STATUS_STYLE = {
 type Filter = null | "逾期" | "執行中" | "已完成" | { type: "dept"; name: string };
 const today = () => NOW.toISOString().slice(0, 10);
 
-export default function DecisionsPage({ decisions, setDecisions, departments, userProfile }: Props) {
+export default function DecisionsPage({
+  decisions, setDecisions, departments, userProfile,
+  reports, handoffs, blockers, employees, history,
+}: Props) {
   const [viewing, setViewing] = useState<Decision | null>(null);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Decision | null>(null);
@@ -203,6 +212,74 @@ export default function DecisionsPage({ decisions, setDecisions, departments, us
         )}
       </AnimatePresence>
 
+      {/* Leader Scorecard - 決策成效排行 */}
+      {!filter && done.length > 0 && (() => {
+        const scores = computeLeaderScores({
+          reports, handoffs, decisions, blockers, employees, departments, history,
+        }).filter((s) => s.completedDecisions > 0);
+        if (scores.length === 0) return null;
+        const top = scores[0];
+        return (
+          <div className="mb-6">
+            <div className="flex items-baseline gap-2 mb-3">
+              <h3 className="text-sm font-bold text-slate-900">決策成效排行</h3>
+              <span className="text-xs text-slate-400">依「已完成決策對組織健康度的平均影響」排序</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {scores.slice(0, 6).map((s, i) => {
+                const tone = s.avgImpactScore >= 3 ? { color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200" }
+                            : s.avgImpactScore <= -3 ? { color: "text-red-600", bg: "bg-red-50", border: "border-red-200" }
+                            : { color: "text-slate-600", bg: "bg-slate-50", border: "border-slate-200" };
+                const isTop = s.decidedBy === top.decidedBy && s.avgImpactScore > 0;
+                return (
+                  <div key={s.decidedBy}
+                    className={cn(
+                      "p-4 rounded-2xl border bg-white relative",
+                      isTop ? "border-emerald-300 shadow-sm" : "border-slate-200/70",
+                    )}
+                  >
+                    {isTop && (
+                      <span className="absolute -top-2 -right-2 bg-amber-400 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
+                        🏆 #1
+                      </span>
+                    )}
+                    <div className="flex items-baseline justify-between mb-2">
+                      <span className="text-sm font-bold text-slate-900">{s.decidedBy}</span>
+                      <span className={cn("text-[10px] font-bold tracking-wide px-1.5 py-0.5 rounded", tone.bg, tone.color)}>
+                        #{i + 1}
+                      </span>
+                    </div>
+                    <div className="flex items-baseline gap-2 mb-3">
+                      <span className={cn("text-3xl font-black leading-none", tone.color)}>
+                        {s.avgImpactScore > 0 ? "+" : ""}{s.avgImpactScore.toFixed(1)}
+                      </span>
+                      <span className="text-[10px] text-slate-400">平均成效分</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1 text-[10px]">
+                      <div className="text-center bg-emerald-50 rounded py-1.5">
+                        <div className="font-black text-emerald-600">{s.positiveCount}</div>
+                        <div className="text-emerald-700 mt-0.5">正面</div>
+                      </div>
+                      <div className="text-center bg-slate-100 rounded py-1.5">
+                        <div className="font-black text-slate-600">{s.neutralCount}</div>
+                        <div className="text-slate-500 mt-0.5">中性</div>
+                      </div>
+                      <div className="text-center bg-red-50 rounded py-1.5">
+                        <div className="font-black text-red-600">{s.negativeCount}</div>
+                        <div className="text-red-700 mt-0.5">負面</div>
+                      </div>
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-2 text-center">
+                      {s.completedDecisions} / {s.totalDecisions} 已完成
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* 預設提示 */}
       {!filter && (
         <Card className="p-12 text-center bg-slate-50/50 border-dashed">
@@ -233,6 +310,64 @@ export default function DecisionsPage({ decisions, setDecisions, departments, us
                 <div className="text-xs text-slate-600 bg-blue-50/50 rounded-lg p-3 leading-relaxed">{viewing.notes}</div>
               </div>
             )}
+
+            {/* 決策成效（Decision Impact） — 僅已完成決策有 */}
+            {viewing.status === "已完成" && viewing.completedAt && (() => {
+              const impact = analyzeDecisionImpact(viewing, {
+                reports, handoffs, decisions, blockers, employees, departments, history,
+              });
+              if (!impact) return null;
+              const tone = impact.verdict === "正面" ? { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", icon: "📈" }
+                         : impact.verdict === "負面" ? { bg: "bg-red-50", text: "text-red-700", border: "border-red-200", icon: "📉" }
+                         : { bg: "bg-slate-50", text: "text-slate-700", border: "border-slate-200", icon: "→" };
+              return (
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="text-[10px] text-slate-400 font-bold tracking-wider">
+                      決策成效 · 對組織健康度影響
+                    </div>
+                    <div className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full", tone.bg, tone.text)}>
+                      {tone.icon} {impact.verdict}
+                    </div>
+                  </div>
+                  <div className={cn("rounded-lg p-3 border", tone.bg, tone.border)}>
+                    <div className="flex items-baseline gap-2 mb-2">
+                      <span className={cn("text-3xl font-black leading-none", tone.text)}>
+                        {impact.deltaOverall > 0 ? "+" : ""}{impact.deltaOverall.toFixed(1)}
+                      </span>
+                      <span className="text-xs text-slate-500">健康度變化</span>
+                      <span className="ml-auto text-[10px] text-slate-400">
+                        {impact.before.overall.toFixed(0)} → {impact.after.overall.toFixed(0)}
+                      </span>
+                    </div>
+                    <div className="space-y-1 text-[11px]">
+                      {Object.entries(impact.deltaByDimension)
+                        .filter(([, v]) => Math.abs(v) >= 1)
+                        .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+                        .slice(0, 3)
+                        .map(([key, v]) => {
+                          const label = ({
+                            blockerHealth: "卡點健康",
+                            decisionTimeliness: "決策及時",
+                            handoffSmoothness: "交接流暢",
+                            loadBalance: "負載均衡",
+                            crossDept: "部門協作",
+                            reportQuality: "週報品質",
+                          } as Record<string, string>)[key];
+                          return (
+                            <div key={key} className="flex items-center justify-between">
+                              <span className="text-slate-600">{label}</span>
+                              <span className={cn("font-bold font-mono", v > 0 ? "text-emerald-600" : "text-red-600")}>
+                                {v > 0 ? "+" : ""}{v.toFixed(1)}
+                              </span>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
             <div className="flex justify-between pt-3 border-t border-slate-100">
               <div className="flex gap-2">
                 <Button variant="ghost" size="sm" onClick={() => { setEditing(viewing); setViewing(null); }}>編輯</Button>
