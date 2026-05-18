@@ -5,7 +5,7 @@
 import { useMemo, useState } from "react";
 import { Sparkles, ChevronRight, Clock, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { searchHistory } from "../lib/historySearch";
+import { searchHistoryMined } from "../lib/textMining";
 import { cn } from "../lib/utils";
 import type { HistoryCase } from "../lib/types";
 
@@ -26,7 +26,7 @@ export function SimilarCases({ query, history, limit = 3, variant = "card" }: Pr
 
   const results = useMemo(() => {
     if (!query.trim()) return [];
-    return searchHistory(query, history).filter((r) => r.relevance > 20).slice(0, limit);
+    return searchHistoryMined(query, history).filter((r) => r.relevance > 20).slice(0, limit);
   }, [query, history, limit]);
 
   if (results.length === 0) return null;
@@ -54,7 +54,7 @@ export function SimilarCases({ query, history, limit = 3, variant = "card" }: Pr
             <div className="flex-1 min-w-0">
               <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                 類似歷史案件
-                <span className="text-[10px] text-slate-400 font-normal">BM25F 推薦</span>
+                <span className="text-[10px] text-slate-400 font-normal">Hybrid 推薦</span>
               </div>
               {avgDays > 0 && (
                 <div className="text-[10px] text-slate-500 mt-0.5">
@@ -96,6 +96,11 @@ export function SimilarCases({ query, history, limit = 3, variant = "card" }: Pr
                     <div className="text-[10px] text-slate-500 mt-1 truncate">
                       {r.date} · {r.owner} · 相關度 <strong className="text-violet-700">{Math.min(99, r.relevance)}%</strong>
                     </div>
+                    {r.fingerprint.length > 0 && (
+                      <div className="text-[10px] text-slate-400 mt-1 truncate">
+                        指紋：{r.fingerprint.slice(0, 3).join(" · ")}
+                      </div>
+                    )}
                   </div>
                   <ChevronRight size={14} className="text-slate-300 group-hover:text-violet-500 group-hover:translate-x-0.5 transition shrink-0" />
                 </div>
