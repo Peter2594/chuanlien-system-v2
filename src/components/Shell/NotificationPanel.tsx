@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { cn } from "../../lib/utils";
 import { NOW } from "../../lib/dateUtils";
 import { CURRENT_WEEK_LABEL } from "../../lib/dateUtils";
-import { analyzeBlockerRecord } from "../../lib/algorithms";
+import { analyzeBlockerRecord, isDecisionOverdueAt, daysOverdue } from "../../lib/algorithms";
 import type { Decision, Handoff, Blocker, Report, HistoryCase, Department } from "../../lib/types";
 import type { TabId } from "./Sidebar";
 
@@ -66,10 +66,10 @@ export function NotificationPanel({ decisions, handoffs, blockers, reports, depa
 
     // 2. 逾期決策
     decisions
-      .filter((d) => d.status === "逾期")
+      .filter((d) => isDecisionOverdueAt(d, NOW))
       .slice(0, 5)
       .forEach((d) => {
-        const days = Math.max(0, Math.round((+NOW - +new Date(d.dueDate)) / 86400000));
+        const days = daysOverdue(d, NOW);
         list.push({
           id: `decision-${d.id}`,
           level: "critical",

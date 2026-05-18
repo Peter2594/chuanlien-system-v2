@@ -13,7 +13,7 @@
  */
 import { NOW } from "./dateUtils";
 import type { Report, Handoff, Decision, Blocker, Employee, Department, HistoryCase } from "./types";
-import { analyzeEmployeeLoad, analyzeBlockerRecord, analyzeDeptNetwork } from "./algorithms";
+import { analyzeEmployeeLoad, analyzeBlockerRecord, analyzeDeptNetwork, isDecisionOverdueAt, isDecisionCompletedAt } from "./algorithms";
 
 export interface HealthSnapshot {
   blockerHealth: number;
@@ -60,7 +60,7 @@ export function computeHealthSnapshot(
   if (activeBlockers.length > 0) {
     const analyses = activeBlockers
       .filter((b) => b.status !== "resolved")
-      .map((b) => analyzeBlockerRecord(b, blockers, history));
+      .map((b) => analyzeBlockerRecord(b, blockers, history, asOf));
     const p95 = analyses.filter((a) => a.level === "critical").length;
     const p90 = analyses.filter((a) => a.level === "high").length;
     const avgP = analyses.length
@@ -72,18 +72,11 @@ export function computeHealthSnapshot(
   }
 
   // ===== 2. 決策及時 =====
-  // 「當週時點」逾期：已決議 + 截止日已過 + (還沒完成 或 完成在 asOf 之後)
-  const isOverdueAtAsOf = (d: Decision) => {
-    if (!d.dueDate || d.dueDate === "即時生效") return false;
-    if (new Date(d.dueDate) >= asOf) return false;
-    if (d.completedAt && new Date(d.completedAt) <= asOf) return false;
-    return true;
-  };
   let decisionTimeliness = 100;
-  const overdueDec = activeDecisions.filter(isOverdueAtAsOf).length;
+  const overdueDec = activeDecisions.filter((d) => isDecisionOverdueAt(d, asOf)).length;
   // 「當週時點」已完成：completedAt ≤ asOf
   const completed = activeDecisions.filter(
-    (d) => d.completedAt && d.decidedAt && new Date(d.completedAt) <= asOf,
+    (d) => d.decidedAt && isDecisionCompletedAt(d, asOf),
   );
   if (completed.length > 0) {
     const days = completed.map((d) => (+new Date(d.completedAt!) - +new Date(d.decidedAt)) / 86400000);
@@ -139,9 +132,13 @@ export function computeHealthSnapshot(
 
   // ===== 6. 週報品質 =====
   let reportQuality = 100;
-  const expectedDepts = departments.filter((d) => d.active && d.name !== "營運與管理層").length;
-  const submittedDepts = new Set(weekReports.map((r) => r.dept));
-  const submissionRate = expectedDepts > 0 ? submittedDepts.size / expectedDepts : 1;
+  const expectedDeptSet = new Set(
+    departments.filter((d) => d.active && d.name !== "營運與管理層").map((d) => d.name),
+  );
+  const expectedDepts = expectedDeptSet.size;
+  // 分母與分子都過濾出「應交週報的部門」，避免管理層交了週報導致 rate > 1
+  const submittedDepts = new Set(weekReports.filter((r) => expectedDeptSet.has(r.dept)).map((r) => r.dept));
+  const submissionRate = expectedDepts > 0 ? Math.min(1, submittedDepts.size / expectedDepts) : 1;
   // 平均「案件 + 卡點 + 協助 + 下週」字數
   if (weekReports.length > 0) {
     const avgLen = weekReports.reduce((s, r) => {

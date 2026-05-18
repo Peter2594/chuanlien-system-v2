@@ -77,17 +77,21 @@ export function useAppData() {
         const finalHistory   = (hist || []).length < 5 ? SEED_HISTORY  : hist;
         const finalMeetings  = (mh || []).length < 5   ? SEED_MEETING_HISTORY : mh;
 
-        // 員工 / 決策也只在「空」時補進 SEED (避免覆蓋使用者編輯)
+        // 員工 / 決策只在「空」時補進 SEED (避免覆蓋使用者編輯)
         const finalEmployees = (emp || []).length === 0 ? SEED_EMPLOYEES : emp;
         const finalDecisions = (d || []).length === 0 ? SEED_DECISIONS : d;
+        // departments / users 也要保護：Firestore 抓到空陣列時 fallback 到 SEED
+        // 否則整個 app 會崩潰（很多頁面用 departments.filter(d => d.active)）
+        const finalDepts = (deptRows || []).length === 0 ? (SEED_DEPARTMENTS as Department[]) : deptRows;
+        const finalUsers = (userRows || []).length === 0 ? (SEED_USERS as SystemUser[]) : userRows;
 
         setReports(finalReports);
         setHandoffs(finalHandoffs);
         setDecisions(finalDecisions);
         setBlockers(finalBlockers);
         setEmployees(finalEmployees);
-        setDepartments(deptRows);
-        setUsers(userRows);
+        setDepartments(finalDepts);
+        setUsers(finalUsers);
         setMeetingHistory(finalMeetings);
         setHistory(finalHistory);
         setSyncStatus("idle");

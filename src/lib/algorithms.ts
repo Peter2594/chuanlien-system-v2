@@ -7,6 +7,42 @@ import type {
   Report, Handoff, Decision, Blocker, HistoryCase, Employee, Department,
 } from "./types";
 
+// ===== 決策狀態 helper =====
+// 統一「逾期」的判定邏輯，避免不同頁面用不同標準
+// 規則：已決議 + 截止日 < asOf + (尚未完成 OR 完成在 asOf 之後)
+export function isDecisionOverdueAt(d: Decision, asOf: Date = new Date()): boolean {
+  if (!d.dueDate || d.dueDate === "即時生效") return false;
+  const due = new Date(d.dueDate);
+  if (isNaN(+due)) return false;
+  if (+due >= +asOf) return false;
+  if (d.completedAt) {
+    const completed = new Date(d.completedAt);
+    if (!isNaN(+completed) && +completed <= +asOf) return false;
+  }
+  return true;
+}
+
+// 該決策是否還算「執行中」(已決議但尚未完成且未逾期)
+export function isDecisionInProgressAt(d: Decision, asOf: Date = new Date()): boolean {
+  if (!d.decidedAt || new Date(d.decidedAt) > asOf) return false;
+  if (d.completedAt && new Date(d.completedAt) <= asOf) return false;
+  return !isDecisionOverdueAt(d, asOf);
+}
+
+export function isDecisionCompletedAt(d: Decision, asOf: Date = new Date()): boolean {
+  if (!d.completedAt) return false;
+  const completed = new Date(d.completedAt);
+  return !isNaN(+completed) && +completed <= +asOf;
+}
+
+// 計算逾期天數（已逾期才有意義）
+export function daysOverdue(d: Decision, asOf: Date = new Date()): number {
+  if (!d.dueDate || d.dueDate === "即時生效") return 0;
+  const due = new Date(d.dueDate);
+  if (isNaN(+due)) return 0;
+  return Math.max(0, Math.round((+asOf - +due) / 86400000));
+}
+
 // ===== 統計工具 =====
 export const stats = {
   mean(arr: number[]) {
@@ -175,10 +211,11 @@ export function analyzeBlockerRecord(
   blocker: Blocker,
   historyDB: Blocker[],
   historyCases: HistoryCase[] = [],
+  asOf?: Date,
 ) {
-  const now = new Date();
-  const createdAt = blocker.createdAt ? new Date(blocker.createdAt) : now;
-  const currentDays = Math.max(1, Math.round((+now - +createdAt) / 86400000));
+  const ref = asOf || new Date();
+  const createdAt = blocker.createdAt ? new Date(blocker.createdAt) : ref;
+  const currentDays = Math.max(1, Math.round((+ref - +createdAt) / 86400000));
 
   const catLabel = BLOCKER_CATEGORIES.find((c) => c.key === blocker.category)?.label;
 
@@ -347,7 +384,7 @@ export function computeORI({
     const avgDays = days.reduce((s, v) => s + v, 0) / days.length;
     DL = clamp(100 + (avgDays - 14) * 4);
   }
-  const overdue = decisions.filter((d) => d.status === "逾期").length;
+  const overdue = decisions.filter((d) => isDecisionOverdueAt(d)).length;
   DL = clamp(DL + overdue * 12);
 
   // BT

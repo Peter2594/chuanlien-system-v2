@@ -10,6 +10,7 @@ import { NOW } from "../lib/dateUtils";
 import type { Decision, Report, Handoff, Blocker, Employee, HistoryCase, Department } from "../lib/types";
 import type { UserProfile } from "../lib/firebase";
 import { analyzeDecisionImpact, computeLeaderScores } from "../lib/decisionImpact";
+import { isDecisionOverdueAt, isDecisionInProgressAt, isDecisionCompletedAt } from "../lib/algorithms";
 
 interface Props {
   decisions: Decision[];
@@ -41,9 +42,10 @@ export default function DecisionsPage({
   const [editing, setEditing] = useState<Decision | null>(null);
   const [filter, setFilter] = useState<Filter>(null);
 
-  const overdue    = decisions.filter((d) => d.status === "逾期");
-  const inProgress = decisions.filter((d) => d.status === "執行中");
-  const done       = decisions.filter((d) => d.status === "已完成");
+  // 用動態 helper 判定狀態（避免 status 欄位與 dueDate 不一致）
+  const overdue    = decisions.filter((d) => isDecisionOverdueAt(d, NOW));
+  const inProgress = decisions.filter((d) => isDecisionInProgressAt(d, NOW));
+  const done       = decisions.filter((d) => isDecisionCompletedAt(d, NOW));
 
   const deptDistribution = useMemo(() => {
     const m: Record<string, number> = {};
@@ -326,10 +328,21 @@ export default function DecisionsPage({
                     <div className="text-[10px] text-slate-400 font-bold tracking-wider">
                       決策成效 · 對組織健康度影響
                     </div>
-                    <div className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full", tone.bg, tone.text)}>
-                      {tone.icon} {impact.verdict}
-                    </div>
+                    {impact.insufficient ? (
+                      <div className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                        ⏳ 追蹤中
+                      </div>
+                    ) : (
+                      <div className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full", tone.bg, tone.text)}>
+                        {tone.icon} {impact.verdict}
+                      </div>
+                    )}
                   </div>
+                  {impact.insufficient && (
+                    <div className="mb-1.5 text-[10px] text-slate-500 px-2.5 py-1.5 rounded bg-slate-50 border border-slate-200">
+                      完成才 {impact.daysSinceCompleted} 天，需累積 28 天才能算最終成效 — 目前為暫評
+                    </div>
+                  )}
                   <div className={cn("rounded-lg p-3 border", tone.bg, tone.border)}>
                     <div className="flex items-baseline gap-2 mb-2">
                       <span className={cn("text-3xl font-black leading-none", tone.text)}>

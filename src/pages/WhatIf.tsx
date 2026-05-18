@@ -15,7 +15,7 @@ import { Card } from "../components/ui/Card";
 import { cn } from "../lib/utils";
 import { NOW } from "../lib/dateUtils";
 import { computeHealthSnapshot, healthLevel } from "../lib/orgHealth";
-import { analyzeBlockerRecord } from "../lib/algorithms";
+import { analyzeBlockerRecord, isDecisionOverdueAt, daysOverdue } from "../lib/algorithms";
 import type { Report, Handoff, Decision, Blocker, Employee, Department, HistoryCase } from "../lib/types";
 
 interface Props {
@@ -64,7 +64,7 @@ export default function WhatIfPage({
 
   // 逾期決策
   const overdueDecisions = useMemo(() =>
-    decisions.filter((d) => d.status === "逾期"),
+    decisions.filter((d) => isDecisionOverdueAt(d, NOW)),
   [decisions]);
 
   // 待簽收交接（逾時的）
@@ -321,7 +321,7 @@ export default function WhatIfPage({
             ) : (
               overdueDecisions.map((d) => {
                 const checked = scenario.expeditedDecisionIds.has(d.id);
-                const daysLate = Math.max(0, Math.round((+NOW - +new Date(d.dueDate)) / 86400000));
+                const daysLate = daysOverdue(d, NOW);
                 return (
                   <ScenarioRow
                     key={d.id}

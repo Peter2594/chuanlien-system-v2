@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useMemo, useState } from "react";
 import {
-  Users, Search, AlertCircle, ChevronRight, ArrowUpRight, Sparkles,
+  Users, Search, AlertCircle, ChevronRight, ArrowUpRight,
   Activity, TrendingUp, Network,
 } from "lucide-react";
 import { motion } from "motion/react";
@@ -9,6 +9,7 @@ import { Card } from "../components/ui/Card";
 import { cn } from "../lib/utils";
 import {
   analyzeEmployeeLoad, analyzeDeptNetwork, analyzeBlockerRecord, computeORI, oriLevel,
+  isDecisionOverdueAt, isDecisionInProgressAt, daysOverdue,
 } from "../lib/algorithms";
 import { NOW } from "../lib/dateUtils";
 import type {
@@ -39,7 +40,7 @@ export default function Dashboard({
     const network = analyzeDeptNetwork(reports, departments, handoffs);
     const activeBlockers = blockers
       .filter((b) => b.status !== "resolved")
-      .map((b) => analyzeBlockerRecord(b, blockers));
+      .map((b) => analyzeBlockerRecord(b, blockers, history));
     const ori = computeORI({ loads, decisions, activeBlockers, network });
     const lvl = oriLevel(ori.index);
 
@@ -92,14 +93,14 @@ export default function Dashboard({
       .map(([tag, count]) => ({ tag, count }));
 
     // 今天要做的 3 件事
-    const overdueDec = decisions.filter((d) => d.status === "逾期");
+    const overdueDec = decisions.filter((d) => isDecisionOverdueAt(d, NOW));
     const overdueHandoffs = handoffs.filter((h) => h.status === "待簽收" && (h.hoursOverdue || 0) >= 24);
     const todoItems = [
       ...overdueDec.slice(0, 2).map((d) => {
-        const days = Math.max(1, Math.round((+NOW - +new Date(d.dueDate || NOW)) / 86400000));
+        const days = daysOverdue(d, NOW);
         return {
           id: "d-" + d.id, type: "decision" as const, name: d.title,
-          reason: `${d.assignedDept} · 逾期 ${days} 天`,
+          reason: days > 0 ? `${d.assignedDept} · 逾期 ${days} 天` : `${d.assignedDept} · 已逾期`,
         };
       }),
       ...p95Blockers.slice(0, 2).map((b) => ({
@@ -394,7 +395,7 @@ export default function Dashboard({
         <SecondaryCard
           icon={Activity}
           label="決策執行軌跡"
-          value={`${decisions.filter((d) => d.status === "執行中").length} 執行中 · ${decisions.filter((d) => d.status === "逾期").length} 逾期`}
+          value={`${decisions.filter((d) => isDecisionInProgressAt(d, NOW)).length} 執行中 · ${decisions.filter((d) => isDecisionOverdueAt(d, NOW)).length} 逾期`}
           hint="平均執行時長與達成率"
           color="text-emerald-500"
           bg="bg-emerald-50"

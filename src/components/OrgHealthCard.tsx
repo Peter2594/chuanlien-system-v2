@@ -49,11 +49,10 @@ function resolveEventItems(
     Math.max(0, Math.round((asOfMs - +new Date(createdAt)) / 86400000));
 
   // 卡點分析：用 analyzeBlockerRecord 取得 level，與 chip 的計算來源一致
-  // 注意：analyzeBlockerRecord 用 new Date() 算 currentDays，所以歷史週的 days 會偏大；
-  //       為了讓 chip 與 inline 數量一致，這裡刻意用同樣的方式分析。
+  // 傳入 asOf 讓歷史週的 currentDays 反映該週時點，數字更精確
   const analyzeAll = () => data.blockers
     .filter((b) => b.status !== "resolved" && new Date(b.createdAt) <= asOf)
-    .map((b) => ({ blocker: b, ana: analyzeBlockerRecord(b, data.blockers, data.history) }));
+    .map((b) => ({ blocker: b, ana: analyzeBlockerRecord(b, data.blockers, data.history, asOf) }));
 
   if (/極高風險卡點/.test(event)) {
     return analyzeAll()

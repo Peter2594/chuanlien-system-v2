@@ -5,6 +5,7 @@
  * 量化該決策對組織的影響。
  */
 import { computeHealthSnapshot, type HealthSnapshot } from "./orgHealth";
+import { NOW } from "./dateUtils";
 import type { Decision, Report, Handoff, Blocker, Employee, Department, HistoryCase } from "./types";
 
 export interface DecisionImpact {
@@ -21,7 +22,9 @@ export interface DecisionImpact {
     reportQuality: number;
   };
   verdict: "正面" | "中性" | "負面";
-  score: number;          // -100 ~ +100，正向為改善
+  score: number;            // -100 ~ +100，正向為改善
+  insufficient?: boolean;   // 完成日太近，after 窗口不足
+  daysSinceCompleted?: number;
 }
 
 const DIMS = [
@@ -45,8 +48,9 @@ export function analyzeDecisionImpact(
   if (!decision.completedAt || !decision.decidedAt) return null;
   const decidedDate = new Date(decision.decidedAt);
   const completedDate = new Date(decision.completedAt);
+  if (isNaN(+decidedDate) || isNaN(+completedDate)) return null;
 
-  // 決策前 N 週的快照（取決策日前 4 週）
+  // 決策前 N 週的快照（取決策日前 1 天）
   const beforeAsOf = new Date(decidedDate);
   beforeAsOf.setDate(beforeAsOf.getDate() - 1);
   const before = computeHealthSnapshot(
@@ -54,9 +58,13 @@ export function analyzeDecisionImpact(
     data.employees, data.departments, data.history,
   );
 
-  // 決策完成後 N 週的快照
-  const afterAsOf = new Date(completedDate);
-  afterAsOf.setDate(afterAsOf.getDate() + windowWeeks * 7);
+  // 決策完成後 N 週的快照，clamp 到 NOW（不可採用未來日期）
+  const wantedAfter = new Date(completedDate);
+  wantedAfter.setDate(wantedAfter.getDate() + windowWeeks * 7);
+  const afterAsOf = +wantedAfter > +NOW ? NOW : wantedAfter;
+  const daysSinceCompleted = Math.round((+NOW - +completedDate) / 86400000);
+  const insufficient = +wantedAfter > +NOW;
+
   const after = computeHealthSnapshot(
     afterAsOf, data.reports, data.handoffs, data.decisions, data.blockers,
     data.employees, data.departments, data.history,
@@ -88,6 +96,8 @@ export function analyzeDecisionImpact(
     deltaByDimension,
     verdict,
     score,
+    insufficient,
+    daysSinceCompleted,
   };
 }
 

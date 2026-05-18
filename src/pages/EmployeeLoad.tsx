@@ -146,7 +146,7 @@ export default function EmployeeLoadPage({ reports, handoffs, employees }: Props
             label="過載人數"
             value={overload.length}
             color="text-red-500"
-            hint={`占 ${Math.round((overload.length / loads.length) * 100)}%`}
+            hint={loads.length > 0 ? `占 ${Math.round((overload.length / loads.length) * 100)}%` : "尚無資料"}
             active={filter === "overload"}
             onClick={() => setFilter(filter === "overload" ? null : "overload")}
           />

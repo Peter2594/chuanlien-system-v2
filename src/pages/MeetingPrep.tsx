@@ -3,6 +3,7 @@ import { Calendar, ChevronDown, FileWarning, AlertTriangle, ArrowRight, Sparkles
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "../lib/utils";
 import { NOW } from "../lib/dateUtils";
+import { isDecisionOverdueAt, daysOverdue } from "../lib/algorithms";
 import type { MeetingHistory, Decision, Handoff, Blocker } from "../lib/types";
 
 interface Props {
@@ -55,10 +56,10 @@ export default function MeetingPrepPage({ meetingHistory, decisions, handoffs, b
     .slice(0, 4);
 
   const overdueDecisions = decisions
-    .filter((d) => d.status === "逾期")
+    .filter((d) => isDecisionOverdueAt(d, NOW))
     .map((d) => ({
       ...d,
-      daysLate: Math.max(0, Math.round((+NOW - +new Date(d.dueDate)) / 86400000)),
+      daysLate: daysOverdue(d, NOW),
     }))
     .sort((a, b) => b.daysLate - a.daysLate)
     .slice(0, 4);
