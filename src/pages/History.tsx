@@ -1,8 +1,13 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { Search, ChevronDown, X, Sparkles, Clock, TrendingUp } from "lucide-react";
+import { Search, ChevronDown, X, Sparkles, Clock, TrendingUp, Network, Tags } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "../lib/utils";
-import { searchHistory } from "../lib/historySearch";
+import {
+  buildKnowledgeGraph,
+  expandQuery,
+  extractCaseFingerprints,
+  searchHistoryMined,
+} from "../lib/textMining";
 import type { HistoryCase } from "../lib/types";
 
 interface Props {
@@ -32,8 +37,15 @@ export default function HistoryPage({ history }: Props) {
   const [q, setQ] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // BM25F + n-gram + 同義詞 + substring boost
-  const results = useMemo(() => searchHistory(q, history), [q, history]);
+  // BM25F + TextRank fingerprints + query expansion + hybrid reranking
+  const results = useMemo(() => searchHistoryMined(q, history), [q, history]);
+  const fingerprints = useMemo(() => extractCaseFingerprints(history, 6), [history]);
+  const fingerprintMap = useMemo(
+    () => new Map(fingerprints.map((fp) => [fp.caseId, fp.keywords.map((k) => k.term)])),
+    [fingerprints],
+  );
+  const knowledgeGraph = useMemo(() => buildKnowledgeGraph(history), [history]);
+  const expandedTerms = useMemo(() => expandQuery(q, history), [q, history]);
 
   // 整體統計
   const overallStats = useMemo(() => {
@@ -66,10 +78,11 @@ export default function HistoryPage({ history }: Props) {
       </div>
 
       {/* 統計列 */}
-      <div className="grid grid-cols-3 gap-3 mb-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <StatTile icon={<Sparkles size={14} />} label="累積案例" value={overallStats.total.toString()} unit="筆" tone="slate" />
         <StatTile icon={<Clock size={14} />}    label="中位解決天數" value={overallStats.median.toString()} unit="天" tone="blue" />
         <StatTile icon={<TrendingUp size={14} />} label="最快解決" value={overallStats.fastest.toString()} unit="天" tone="emerald" />
+        <StatTile icon={<Network size={14} />} label="知識連結" value={knowledgeGraph.edges.length.toString()} unit="組" tone="violet" />
       </div>
 
       {/* 大搜尋框 */}
@@ -119,6 +132,55 @@ export default function HistoryPage({ history }: Props) {
         </div>
       </div>
 
+      {/* Text mining layer */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-3 mb-5">
+        <KnowledgeGraphPanel graph={knowledgeGraph} />
+        <div className="bg-white rounded-2xl border border-slate-200/70 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center">
+              <Tags size={15} />
+            </div>
+            <div>
+              <div className="text-sm font-black text-slate-900">案件指紋與查詢擴展</div>
+              <div className="text-[11px] text-slate-500">TextRank + PMI 共現詞</div>
+            </div>
+          </div>
+          {q.trim() ? (
+            <div className="mb-3">
+              <div className="text-[10px] text-slate-400 font-bold tracking-wider mb-1.5">系統聯想到</div>
+              <div className="flex flex-wrap gap-1.5">
+                {expandedTerms.length > 0 ? expandedTerms.map((term) => (
+                  <button
+                    key={term}
+                    onClick={() => setQ(`${q} ${term}`)}
+                    className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 hover:bg-amber-100 transition"
+                  >
+                    {term}
+                  </button>
+                )) : (
+                  <span className="text-xs text-slate-400">沒有足夠共現訊號</span>
+                )}
+              </div>
+            </div>
+          ) : null}
+          <div>
+            <div className="text-[10px] text-slate-400 font-bold tracking-wider mb-1.5">代表性關鍵詞</div>
+            <div className="flex flex-wrap gap-1.5">
+              {knowledgeGraph.nodes.slice(0, 10).map((node) => (
+                <button
+                  key={node.term}
+                  onClick={() => setQ(node.term)}
+                  className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-50 text-slate-600 hover:bg-blue-50 hover:text-blue-700 transition"
+                  title={`出現在 ${node.count} 筆案件`}
+                >
+                  {node.term}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* 結果行 */}
       <div className="flex items-baseline justify-between mb-3 px-1">
         <div className="text-sm text-slate-500">
@@ -144,6 +206,7 @@ export default function HistoryPage({ history }: Props) {
           const category = getCategoryFromTags(r.tags || []);
           const categoryMeta = category ? CATEGORY_COLOR[category] : null;
           const days = extractDays(r.outcome);
+          const fingerprint = r.fingerprint?.length ? r.fingerprint : fingerprintMap.get(r.id) || [];
           const company = r.title.split(/[．·\.]/)[0]?.trim() || "";
           const action = r.title.split(/[．·\.]/).slice(1).join(" ").trim() || r.title;
           // 速度判定
@@ -222,6 +285,24 @@ export default function HistoryPage({ history }: Props) {
                           );
                         })}
                       </div>
+                      {fingerprint.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                          <span className="text-[10px] text-slate-400 font-bold mr-0.5">案件指紋</span>
+                          {fingerprint.slice(0, 5).map((term) => (
+                            <span
+                              key={term}
+                              className={cn(
+                                "px-2 py-0.5 rounded-md text-[10px] font-semibold border",
+                                r.matchedTerms?.includes(term)
+                                  ? "bg-blue-50 text-blue-700 border-blue-100"
+                                  : "bg-white text-slate-500 border-slate-200",
+                              )}
+                            >
+                              {term}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     {/* 右側相關度 + chevron */}
                     <div className="flex flex-col items-end gap-2 shrink-0">
@@ -253,6 +334,14 @@ export default function HistoryPage({ history }: Props) {
                         className="overflow-hidden mt-4 pt-4 border-t border-slate-100"
                       >
                         <div className="space-y-3 text-sm leading-relaxed">
+                          {q.trim() && (
+                            <div className="grid grid-cols-4 gap-2">
+                              <ScoreMini label="BM25F" value={r.scoreBreakdown.bm25} />
+                              <ScoreMini label="標籤" value={r.scoreBreakdown.tags} />
+                              <ScoreMini label="指紋" value={r.scoreBreakdown.keywords} />
+                              <ScoreMini label="新鮮度" value={r.scoreBreakdown.freshness} />
+                            </div>
+                          )}
                           {r.detail.background && <DetailField label="案件背景" value={r.detail.background} />}
                           {r.detail.process    && <DetailField label="處理過程" value={r.detail.process} />}
                           {r.detail.valuation  && <DetailField label="估值與條件" value={r.detail.valuation} />}
@@ -285,11 +374,12 @@ export default function HistoryPage({ history }: Props) {
   );
 }
 
-function StatTile({ icon, label, value, unit, tone }: { icon: ReactNode; label: string; value: string; unit: string; tone: "slate" | "blue" | "emerald" }) {
+function StatTile({ icon, label, value, unit, tone }: { icon: ReactNode; label: string; value: string; unit: string; tone: "slate" | "blue" | "emerald" | "violet" }) {
   const toneMap = {
     slate:   { iconBg: "bg-slate-100",   iconText: "text-slate-600" },
     blue:    { iconBg: "bg-blue-100",    iconText: "text-blue-600" },
     emerald: { iconBg: "bg-emerald-100", iconText: "text-emerald-600" },
+    violet:  { iconBg: "bg-violet-100",  iconText: "text-violet-600" },
   };
   const t = toneMap[tone];
   return (
@@ -303,6 +393,77 @@ function StatTile({ icon, label, value, unit, tone }: { icon: ReactNode; label: 
           {value}<span className="text-xs text-slate-400 font-medium ml-0.5">{unit}</span>
         </div>
       </div>
+    </div>
+  );
+}
+
+function KnowledgeGraphPanel({ graph }: { graph: ReturnType<typeof buildKnowledgeGraph> }) {
+  const nodes = graph.nodes.slice(0, 9);
+  const positions = nodes.map((node, i) => {
+    const angle = (Math.PI * 2 * i) / Math.max(1, nodes.length) - Math.PI / 2;
+    const radius = i === 0 ? 0 : 38;
+    return {
+      ...node,
+      x: 50 + Math.cos(angle) * radius,
+      y: 50 + Math.sin(angle) * radius,
+    };
+  });
+  const posMap = new Map(positions.map((p) => [p.term, p]));
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200/70 p-4 overflow-hidden">
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <div>
+          <div className="text-sm font-black text-slate-900">關鍵詞共現圖譜</div>
+          <div className="text-[11px] text-slate-500">線越粗，代表兩個詞越常一起出現</div>
+        </div>
+        <span className="text-[10px] text-slate-400 font-bold">{graph.edges.length} links</span>
+      </div>
+      <div className="relative h-56 rounded-xl bg-slate-50 border border-slate-100">
+        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" role="img" aria-label="keyword co-occurrence graph">
+          {graph.edges.slice(0, 14).map((edge) => {
+            const a = posMap.get(edge.source);
+            const b = posMap.get(edge.target);
+            if (!a || !b) return null;
+            return (
+              <line
+                key={`${edge.source}-${edge.target}`}
+                x1={a.x}
+                y1={a.y}
+                x2={b.x}
+                y2={b.y}
+                stroke="#93c5fd"
+                strokeWidth={Math.max(0.4, Math.min(2.2, edge.strength / 3))}
+                strokeOpacity="0.55"
+              />
+            );
+          })}
+        </svg>
+        {positions.map((node, i) => (
+          <button
+            key={node.term}
+            className={cn(
+              "absolute -translate-x-1/2 -translate-y-1/2 rounded-full border shadow-sm text-[10px] font-bold transition hover:scale-105",
+              i === 0
+                ? "px-3 py-2 bg-blue-600 text-white border-blue-600"
+                : "px-2.5 py-1.5 bg-white text-slate-700 border-slate-200",
+            )}
+            style={{ left: `${node.x}%`, top: `${node.y}%` }}
+            title={`出現在 ${node.count} 筆案件`}
+          >
+            {node.term}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ScoreMini({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-xl bg-slate-50 border border-slate-100 p-2">
+      <div className="text-[9px] text-slate-400 font-bold tracking-wider">{label}</div>
+      <div className="text-sm font-black text-slate-800 mt-0.5">{value}</div>
     </div>
   );
 }
