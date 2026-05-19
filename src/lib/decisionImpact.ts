@@ -1,8 +1,14 @@
 /**
- * 決策成效追蹤 (Decision Impact)
+ * 決策成效追蹤 (Decision Impact) — v2.2 加入 Cohort Adjustment
  *
- * 對每筆「已完成」決策，比較決策前 N 週 vs 決策後 N 週的組織健康度，
- * 量化該決策對組織的影響。
+ * 對每筆「已完成」決策，比較決策前 vs 完成後 N 週的組織健康度，量化該決策對組織的影響。
+ *
+ * ★ Cohort Adjustment（v2.2 新增，解決因果歸因問題）：
+ *   原本：decisionDelta = after.overall − before.overall
+ *   問題：若整體趨勢下滑，所有決策的 delta 都被「冤枉」變負分
+ *   修正：扣掉「同期基準變化」（baseline drift）
+ *         adjustedDelta = decisionDelta − baselineDrift
+ *         baselineDrift = 同樣時間長度內，整體組織健康度的平均自然漂移
  */
 import { computeHealthSnapshot, type HealthSnapshot } from "./orgHealth";
 import { NOW } from "./dateUtils";
@@ -12,7 +18,9 @@ export interface DecisionImpact {
   decision: Decision;
   before: HealthSnapshot;
   after: HealthSnapshot;
-  deltaOverall: number;
+  deltaOverall: number;            // 原始 delta (raw)
+  adjustedDelta: number;           // ★ Cohort-adjusted delta (扣掉基準漂移)
+  baselineDrift: number;           // 同期基準漂移
   deltaByDimension: {
     blockerHealth: number;
     decisionTimeliness: number;
@@ -22,8 +30,8 @@ export interface DecisionImpact {
     reportQuality: number;
   };
   verdict: "正面" | "中性" | "負面";
-  score: number;            // -100 ~ +100，正向為改善
-  insufficient?: boolean;   // 完成日太近，after 窗口不足
+  score: number;                   // -100 ~ +100，用 adjustedDelta 計算
+  insufficient?: boolean;
   daysSinceCompleted?: number;
 }
 
@@ -32,18 +40,61 @@ const DIMS = [
   "loadBalance", "crossDept", "reportQuality",
 ] as const;
 
+interface ImpactData {
+  reports: Report[];
+  handoffs: Handoff[];
+  decisions: Decision[];
+  blockers: Blocker[];
+  employees: Employee[];
+  departments: Department[];
+  history: HistoryCase[];
+}
+
+/**
+ * 計算同期基準漂移：給定一個時間窗口（startDate, endDate），
+ * 取 12 週均勻採樣點，估算整體組織健康度的「自然變化速率」，
+ * 乘以該時間窗口長度，得到 expected drift。
+ *
+ * 用快取避免每筆決策都重算 12 個 snapshot。
+ */
+function computeBaselineDrift(
+  startDate: Date,
+  endDate: Date,
+  data: ImpactData,
+  driftCache: { value?: number; ratePerDay?: number },
+): number {
+  const totalDays = Math.max(1, (+endDate - +startDate) / 86400000);
+
+  // 估算每日漂移率（用 12 週均勻採樣計算整體趨勢的線性回歸斜率）
+  if (driftCache.ratePerDay === undefined) {
+    const samples = 12;
+    const overall: { x: number; y: number }[] = [];
+    for (let i = 0; i < samples; i++) {
+      const asOf = new Date(NOW);
+      asOf.setDate(asOf.getDate() - (samples - 1 - i) * 7);
+      const snap = computeHealthSnapshot(
+        asOf, data.reports, data.handoffs, data.decisions, data.blockers,
+        data.employees, data.departments, data.history,
+      );
+      overall.push({ x: (+asOf - +NOW) / 86400000, y: snap.overall });
+    }
+    // 簡單線性回歸 y = ax + b 取斜率 a (per day)
+    const n = overall.length;
+    const meanX = overall.reduce((s, p) => s + p.x, 0) / n;
+    const meanY = overall.reduce((s, p) => s + p.y, 0) / n;
+    const num = overall.reduce((s, p) => s + (p.x - meanX) * (p.y - meanY), 0);
+    const den = overall.reduce((s, p) => s + (p.x - meanX) ** 2, 0);
+    driftCache.ratePerDay = den === 0 ? 0 : num / den;
+  }
+
+  return +(driftCache.ratePerDay! * totalDays).toFixed(2);
+}
+
 export function analyzeDecisionImpact(
   decision: Decision,
-  data: {
-    reports: Report[];
-    handoffs: Handoff[];
-    decisions: Decision[];
-    blockers: Blocker[];
-    employees: Employee[];
-    departments: Department[];
-    history: HistoryCase[];
-  },
+  data: ImpactData,
   windowWeeks: number = 4,
+  driftCache: { value?: number; ratePerDay?: number } = {},
 ): DecisionImpact | null {
   if (!decision.completedAt || !decision.decidedAt) return null;
   const decidedDate = new Date(decision.decidedAt);
@@ -58,7 +109,7 @@ export function analyzeDecisionImpact(
     data.employees, data.departments, data.history,
   );
 
-  // 決策完成後 N 週的快照，clamp 到 NOW（不可採用未來日期）
+  // 決策完成後 N 週的快照，clamp 到 NOW
   const wantedAfter = new Date(completedDate);
   wantedAfter.setDate(wantedAfter.getDate() + windowWeeks * 7);
   const afterAsOf = +wantedAfter > +NOW ? NOW : wantedAfter;
@@ -76,8 +127,13 @@ export function analyzeDecisionImpact(
     deltaByDimension[d] = +(((after as any)[d] - (before as any)[d]) as number).toFixed(1);
   });
 
-  // 評分：deltaOverall 直接當基底，每維度若改善 ≥3 +5 / 惡化 ≥3 -5
-  let score = deltaOverall;
+  // ★ Cohort Adjustment：扣掉同期基準漂移
+  // baselineDrift = 整體組織健康度在 (beforeAsOf, afterAsOf) 期間的自然變化
+  const baselineDrift = computeBaselineDrift(beforeAsOf, afterAsOf, data, driftCache);
+  const adjustedDelta = +(deltaOverall - baselineDrift).toFixed(1);
+
+  // 評分用「校正後 delta」，每維度大幅改善 / 惡化 ±2
+  let score = adjustedDelta;
   DIMS.forEach((d) => {
     const v = deltaByDimension[d];
     if (v >= 3) score += 2;
@@ -93,6 +149,8 @@ export function analyzeDecisionImpact(
     before,
     after,
     deltaOverall,
+    adjustedDelta,
+    baselineDrift,
     deltaByDimension,
     verdict,
     score,
@@ -107,44 +165,42 @@ export interface LeaderScore {
   totalDecisions: number;
   completedDecisions: number;
   avgImpactScore: number;
+  avgAdjustedDelta: number;     // ★ 平均校正後 delta
   positiveCount: number;
   negativeCount: number;
   neutralCount: number;
 }
 
-export function computeLeaderScores(
-  data: {
-    reports: Report[];
-    handoffs: Handoff[];
-    decisions: Decision[];
-    blockers: Blocker[];
-    employees: Employee[];
-    departments: Department[];
-    history: HistoryCase[];
-  },
-): LeaderScore[] {
+export function computeLeaderScores(data: ImpactData): LeaderScore[] {
   const groups: Record<string, Decision[]> = {};
   data.decisions.forEach((d) => {
     if (!groups[d.decidedBy]) groups[d.decidedBy] = [];
     groups[d.decidedBy].push(d);
   });
 
+  // 共用 driftCache 避免每筆決策重跑 12 週快照
+  const driftCache = {};
+
   return Object.entries(groups).map(([decidedBy, decisions]) => {
     const completed = decisions.filter((d) => d.status === "已完成");
     const impacts = completed
-      .map((d) => analyzeDecisionImpact(d, data, 4))
+      .map((d) => analyzeDecisionImpact(d, data, 4, driftCache))
       .filter((x): x is DecisionImpact => x !== null);
     const positive = impacts.filter((i) => i.verdict === "正面").length;
     const negative = impacts.filter((i) => i.verdict === "負面").length;
     const neutral = impacts.filter((i) => i.verdict === "中性").length;
-    const avg = impacts.length
+    const avgScore = impacts.length
       ? +(impacts.reduce((s, i) => s + i.score, 0) / impacts.length).toFixed(1)
+      : 0;
+    const avgAdjustedDelta = impacts.length
+      ? +(impacts.reduce((s, i) => s + i.adjustedDelta, 0) / impacts.length).toFixed(1)
       : 0;
     return {
       decidedBy,
       totalDecisions: decisions.length,
       completedDecisions: completed.length,
-      avgImpactScore: avg,
+      avgImpactScore: avgScore,
+      avgAdjustedDelta,
       positiveCount: positive,
       negativeCount: negative,
       neutralCount: neutral,

@@ -10,6 +10,14 @@ import type {
 // ===== 決策狀態 helper =====
 // 統一「逾期」的判定邏輯，避免不同頁面用不同標準
 // 規則：已決議 + 截止日 < asOf + (尚未完成 OR 完成在 asOf 之後)
+
+// 把日期截斷到當地午夜（避免時分秒殘留造成 ±1 天浮動）
+function startOfDay(d: Date): Date {
+  const out = new Date(d);
+  out.setHours(0, 0, 0, 0);
+  return out;
+}
+
 export function isDecisionOverdueAt(d: Decision, asOf: Date = new Date()): boolean {
   if (!d.dueDate || d.dueDate === "即時生效") return false;
   const due = new Date(d.dueDate);
@@ -36,11 +44,14 @@ export function isDecisionCompletedAt(d: Decision, asOf: Date = new Date()): boo
 }
 
 // 計算逾期天數（已逾期才有意義）
+// 先把兩個時間都對齊到當地午夜，避免時分秒/時區造成的 ±1 天誤差
 export function daysOverdue(d: Decision, asOf: Date = new Date()): number {
   if (!d.dueDate || d.dueDate === "即時生效") return 0;
   const due = new Date(d.dueDate);
   if (isNaN(+due)) return 0;
-  return Math.max(0, Math.round((+asOf - +due) / 86400000));
+  const dueDay = startOfDay(due);
+  const asOfDay = startOfDay(asOf);
+  return Math.max(0, Math.round((+asOfDay - +dueDay) / 86400000));
 }
 
 // ===== 統計工具 =====

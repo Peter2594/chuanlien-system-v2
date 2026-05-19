@@ -223,9 +223,14 @@ export default function DecisionsPage({
         const top = scores[0];
         return (
           <div className="mb-6">
-            <div className="flex items-baseline gap-2 mb-3">
-              <h3 className="text-sm font-bold text-slate-900">決策成效排行</h3>
-              <span className="text-xs text-slate-400">依「已完成決策對組織健康度的平均影響」排序</span>
+            <div className="flex items-baseline justify-between gap-2 mb-3 flex-wrap">
+              <div className="flex items-baseline gap-2">
+                <h3 className="text-sm font-bold text-slate-900">決策成效排行</h3>
+                <span className="text-xs text-slate-400">依「Cohort-adjusted 影響」排序</span>
+              </div>
+              <div className="text-[10px] text-violet-600 font-bold">
+                ✨ 已扣除同期基準漂移
+              </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {scores.slice(0, 6).map((s, i) => {
@@ -346,12 +351,33 @@ export default function DecisionsPage({
                   <div className={cn("rounded-lg p-3 border", tone.bg, tone.border)}>
                     <div className="flex items-baseline gap-2 mb-2">
                       <span className={cn("text-3xl font-black leading-none", tone.text)}>
-                        {impact.deltaOverall > 0 ? "+" : ""}{impact.deltaOverall.toFixed(1)}
+                        {impact.adjustedDelta > 0 ? "+" : ""}{impact.adjustedDelta.toFixed(1)}
                       </span>
-                      <span className="text-xs text-slate-500">健康度變化</span>
+                      <span className="text-xs text-slate-500">校正後成效</span>
                       <span className="ml-auto text-[10px] text-slate-400">
                         {impact.before.overall.toFixed(0)} → {impact.after.overall.toFixed(0)}
                       </span>
+                    </div>
+                    {/* Cohort Adjustment 分解 */}
+                    <div className="mb-3 text-[10px] text-slate-500 bg-white/60 rounded px-2.5 py-1.5 border border-slate-200/60">
+                      <div className="flex justify-between">
+                        <span>原始 delta</span>
+                        <span className="font-mono font-bold text-slate-700">
+                          {impact.deltaOverall > 0 ? "+" : ""}{impact.deltaOverall.toFixed(1)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between mt-0.5">
+                        <span>− 同期基準漂移</span>
+                        <span className="font-mono font-bold text-violet-600">
+                          {impact.baselineDrift > 0 ? "+" : ""}{impact.baselineDrift.toFixed(1)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between mt-0.5 pt-0.5 border-t border-slate-200/60">
+                        <span className="font-bold">= 決策實際成效</span>
+                        <span className={cn("font-mono font-bold", tone.text)}>
+                          {impact.adjustedDelta > 0 ? "+" : ""}{impact.adjustedDelta.toFixed(1)}
+                        </span>
+                      </div>
                     </div>
                     <div className="space-y-1 text-[11px]">
                       {Object.entries(impact.deltaByDimension)

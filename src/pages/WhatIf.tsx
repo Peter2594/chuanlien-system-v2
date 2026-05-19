@@ -4,7 +4,7 @@
  * 互動式調整 (解卡點、加員工、加速決策、轉派案件)，
  * 即時試算對組織健康度的影響。
  */
-import { useState, useMemo } from "react";
+import { useState, useMemo, useDeferredValue } from "react";
 import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   ResponsiveContainer, Tooltip, Legend,
@@ -53,6 +53,10 @@ export default function WhatIfPage({
     signedHandoffIds: new Set(),
     extraHeadcount: {},
   });
+  // 用 useDeferredValue 延遲重算 computeHealthSnapshot
+  // 連續快速點選時不會卡 UI（React 自動 batch + 降優先級）
+  const deferredScenario = useDeferredValue(scenario);
+  const isPending = scenario !== deferredScenario;
 
   // 活躍卡點 (依風險排序)
   const activeBlockers = useMemo(() => {
@@ -75,22 +79,22 @@ export default function WhatIfPage({
 
   const activeDeptList = departments.filter((d) => d.active && d.name !== "營運與管理層").map((d) => d.name);
 
-  // 套用 scenario 後的模擬資料
+  // 套用 scenario 後的模擬資料 — 使用 deferredScenario 讓 React 自動延遲重算
   const simulated = useMemo(() => {
     const newBlockers = blockers.map((b) =>
-      scenario.resolvedBlockerIds.has(b.id) ? { ...b, status: "resolved" as const } : b,
+      deferredScenario.resolvedBlockerIds.has(b.id) ? { ...b, status: "resolved" as const } : b,
     );
     const newDecisions = decisions.map((d) => {
-      if (scenario.expeditedDecisionIds.has(d.id)) {
+      if (deferredScenario.expeditedDecisionIds.has(d.id)) {
         return { ...d, status: "已完成" as const, completedAt: NOW.toISOString().slice(0, 10) };
       }
       return d;
     });
     const newHandoffs = handoffs.map((h) =>
-      scenario.signedHandoffIds.has(h.id) ? { ...h, status: "已簽收" as const, hoursOverdue: undefined } : h,
+      deferredScenario.signedHandoffIds.has(h.id) ? { ...h, status: "已簽收" as const, hoursOverdue: undefined } : h,
     );
     const newEmployees: Employee[] = [...employees];
-    (Object.entries(scenario.extraHeadcount) as [string, number][]).forEach(([dept, n]) => {
+    (Object.entries(deferredScenario.extraHeadcount) as [string, number][]).forEach(([dept, n]) => {
       for (let i = 0; i < n; i++) {
         newEmployees.push({
           name: `（模擬）${dept}新人 ${i + 1}`,
@@ -100,7 +104,7 @@ export default function WhatIfPage({
       }
     });
     return { newBlockers, newDecisions, newHandoffs, newEmployees };
-  }, [scenario, blockers, decisions, handoffs, employees]);
+  }, [deferredScenario, blockers, decisions, handoffs, employees]);
 
   // 基準健康度（現況）
   const baseline = useMemo(() =>
@@ -183,15 +187,23 @@ export default function WhatIfPage({
             在做決策前，先看後果 — 拉開關 / 滑桿模擬不同情境對組織健康度的影響。
           </p>
         </div>
-        {totalChanges > 0 && (
-          <button
-            onClick={reset}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold bg-white border border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition text-slate-700"
-          >
-            <RotateCcw size={12} />
-            重置（已套用 {totalChanges} 個調整）
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {isPending && (
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-violet-600 px-2 py-1 rounded-full bg-violet-50">
+              <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />
+              計算中...
+            </span>
+          )}
+          {totalChanges > 0 && (
+            <button
+              onClick={reset}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold bg-white border border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition text-slate-700"
+            >
+              <RotateCcw size={12} />
+              重置（已套用 {totalChanges} 個調整）
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 上方對比區：現況 vs 模擬後 */}
