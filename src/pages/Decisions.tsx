@@ -9,7 +9,7 @@ import { cn } from "../lib/utils";
 import { NOW } from "../lib/dateUtils";
 import type { Decision, Report, Handoff, Blocker, Employee, HistoryCase, Department } from "../lib/types";
 import type { UserProfile } from "../lib/firebase";
-import { analyzeDecisionImpact, computeLeaderScores } from "../lib/decisionImpact";
+import { analyzeDecisionImpact } from "../lib/decisionImpact";
 import { isDecisionOverdueAt, isDecisionInProgressAt, isDecisionCompletedAt } from "../lib/algorithms";
 
 interface Props {
@@ -213,79 +213,6 @@ export default function DecisionsPage({
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Leader Scorecard - 決策成效排行 */}
-      {!filter && done.length > 0 && (() => {
-        const scores = computeLeaderScores({
-          reports, handoffs, decisions, blockers, employees, departments, history,
-        }).filter((s) => s.completedDecisions > 0);
-        if (scores.length === 0) return null;
-        const top = scores[0];
-        return (
-          <div className="mb-6">
-            <div className="flex items-baseline justify-between gap-2 mb-3 flex-wrap">
-              <div className="flex items-baseline gap-2">
-                <h3 className="text-sm font-bold text-slate-900">決策成效排行</h3>
-                <span className="text-xs text-slate-400">依「Cohort-adjusted 影響」排序</span>
-              </div>
-              <div className="text-[10px] text-violet-600 font-bold">
-                ✨ 已扣除同期基準漂移
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {scores.slice(0, 6).map((s, i) => {
-                const tone = s.avgImpactScore >= 3 ? { color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200" }
-                            : s.avgImpactScore <= -3 ? { color: "text-red-600", bg: "bg-red-50", border: "border-red-200" }
-                            : { color: "text-slate-600", bg: "bg-slate-50", border: "border-slate-200" };
-                const isTop = s.decidedBy === top.decidedBy && s.avgImpactScore > 0;
-                return (
-                  <div key={s.decidedBy}
-                    className={cn(
-                      "p-4 rounded-2xl border bg-white relative",
-                      isTop ? "border-emerald-300 shadow-sm" : "border-slate-200/70",
-                    )}
-                  >
-                    {isTop && (
-                      <span className="absolute -top-2 -right-2 bg-amber-400 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
-                        🏆 #1
-                      </span>
-                    )}
-                    <div className="flex items-baseline justify-between mb-2">
-                      <span className="text-sm font-bold text-slate-900">{s.decidedBy}</span>
-                      <span className={cn("text-[10px] font-bold tracking-wide px-1.5 py-0.5 rounded", tone.bg, tone.color)}>
-                        #{i + 1}
-                      </span>
-                    </div>
-                    <div className="flex items-baseline gap-2 mb-3">
-                      <span className={cn("text-3xl font-black leading-none", tone.color)}>
-                        {s.avgImpactScore > 0 ? "+" : ""}{s.avgImpactScore.toFixed(1)}
-                      </span>
-                      <span className="text-[10px] text-slate-400">平均成效分</span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-1 text-[10px]">
-                      <div className="text-center bg-emerald-50 rounded py-1.5">
-                        <div className="font-black text-emerald-600">{s.positiveCount}</div>
-                        <div className="text-emerald-700 mt-0.5">正面</div>
-                      </div>
-                      <div className="text-center bg-slate-100 rounded py-1.5">
-                        <div className="font-black text-slate-600">{s.neutralCount}</div>
-                        <div className="text-slate-500 mt-0.5">中性</div>
-                      </div>
-                      <div className="text-center bg-red-50 rounded py-1.5">
-                        <div className="font-black text-red-600">{s.negativeCount}</div>
-                        <div className="text-red-700 mt-0.5">負面</div>
-                      </div>
-                    </div>
-                    <div className="text-[10px] text-slate-400 mt-2 text-center">
-                      {s.completedDecisions} / {s.totalDecisions} 已完成
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })()}
 
       {/* 預設提示 */}
       {!filter && (
