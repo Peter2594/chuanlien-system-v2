@@ -546,13 +546,13 @@ def slide_calibration():
     add_text(s, Inches(0.8), Inches(0.9), Inches(11), Inches(0.9),
              "人工權重的五階段方法論", size=34, bold=True, color=WHITE)
     add_text(s, Inches(0.8), Inches(1.7), Inches(11), Inches(0.5),
-             "主管訪談 → 等價關係 → 弱先驗 → 測資校準 → 敏感度確認",
+             "整合管理層意見 → 等價關係 → 弱先驗 → 測資校準 → 敏感度確認",
              size=14, color=INK_LITE)
     add_asterisk(s, Inches(11.6), Inches(0.5), 1.0, WHITE)
 
     # 五階段卡片
     layers = [
-        ("①", "主管訪談",
+        ("①", "整合管理層意見",
          "決定方向",
          "問主管:\n誰比誰重要?",
          "卡點 > 案件\n> 交接 > 被提及"),
