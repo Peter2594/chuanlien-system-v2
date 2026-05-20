@@ -161,35 +161,36 @@ def slide_cover():
     s = prs.slides.add_slide(blank_layout)
     add_gradient_bg(s)
 
-    # 右上 tag
-    tag = add_pill(s, Inches(11.0), Inches(0.5), Inches(1.8), Inches(0.45),
-                   "資訊管理導論", bg_color=None, text_color=WHITE, size=12, bold=False)
-    tag.fill.background()
-    tag.line.color.rgb = WHITE
-    tag.line.width = Pt(1)
+    # 頂部 chip — 課程標籤（極簡灰字，不搶戲）
+    add_text(s, Inches(0.8), Inches(0.7), Inches(8), Inches(0.35),
+             "資訊管理導論 · 期末專案",
+             size=11, bold=True, color=INK_LITE)
 
-    # 大標題
-    add_text(s, Inches(0.8), Inches(2.4), Inches(11), Inches(2.0),
-             "串連系統 v2.2",
-             size=64, bold=True, color=WHITE)
-    add_text(s, Inches(0.8), Inches(3.4), Inches(11), Inches(1.0),
-             "管理決策支援平台 · 從訊號到行動",
-             size=24, color=WHITE)
+    # ── 中段 大留白 ──
+    # 主標題（垂直接近置中，往上半推一點點）
+    add_text(s, Inches(0.8), Inches(3.0), Inches(12), Inches(1.4),
+             "串連系統",
+             size=88, bold=True, color=DEEP, line_spacing=1.0)
+    # 副標（v 字版本壓在右側、小字）
+    add_text(s, Inches(0.8), Inches(4.35), Inches(12), Inches(0.7),
+             "管理決策支援平台",
+             size=26, color=DEEP, line_spacing=1.2)
 
-    # 副標 italic
-    add_text(s, Inches(0.8), Inches(4.6), Inches(11), Inches(0.6),
-             "Chuanlien · A Decision Support Platform",
-             size=18, color=INK_LITE)
+    # 細線分隔（accent 色，視覺呼吸點）
+    line = s.shapes.add_shape(MSO_SHAPE.RECTANGLE,
+                               Inches(0.8), Inches(5.3),
+                               Inches(0.6), Emu(15875))  # 細的橘黃短線
+    line.line.fill.background()
+    line.fill.solid()
+    line.fill.fore_color.rgb = ACCENT
 
-    # 右側裝飾雪花
-    add_asterisk(s, Inches(11.3), Inches(4.2), 1.4, WHITE)
-
-    # 組員
-    add_text(s, Inches(0.8), Inches(6.4), Inches(2), Inches(0.4),
-             "第 13 組", size=12, bold=True, color=WHITE)
-    add_text(s, Inches(0.8), Inches(6.7), Inches(11), Inches(0.4),
-             "林聿平　組員 A　組員 B　組員 C　組員 D",
-             size=14, bold=True, color=WHITE)
+    # 底部組別（精簡到一行小字）
+    add_text(s, Inches(0.8), Inches(5.55), Inches(11), Inches(0.4),
+             "第 13 組　|　林聿平　組員 A　組員 B　組員 C　組員 D",
+             size=11, color=INK_LITE)
+    add_text(s, Inches(0.8), Inches(5.95), Inches(11), Inches(0.35),
+             "2026 年 5 月",
+             size=10, color=INK_LITE)
 
 
 # ===========================================================
@@ -1013,34 +1014,40 @@ def slide_outcome():
     s = prs.slides.add_slide(blank_layout)
     add_gradient_bg(s)
     add_text(s, Inches(0.8), Inches(0.6), Inches(8), Inches(0.8),
-             "預期效益", size=44, bold=True, color=WHITE)
+             "預期效益", size=44, bold=True, color=DEEP)
     add_text(s, Inches(0.8), Inches(1.45), Inches(11), Inches(0.6),
              "從「主管直覺」到「數據共識」",
              size=18, color=INK_LITE)
-    add_asterisk(s, Inches(11.6), Inches(0.5), 1.0, WHITE)
 
+    # 2 x 2 grid，數字更大、卡片更寬、留白更多
     nums = [
-        ("90s", "員工負載狀態", "從 30 分鐘訪談 → 90 秒掃一眼雷達圖"),
-        ("67%", "卡點 Recall", "Asymmetric Detection 自動抓出主管直覺中的「卡」"),
-        ("100%", "決策回看率", "v2.1 = 0%（沒人事後看）→ v2.2 = 強制回顧"),
-        ("0元", "授權成本", "全用開源 + Firebase 免費額度"),
+        ("90 秒",  "看完員工負載狀態", "原本：跟 17 人輪流訪談 30 分鐘\n現在：打開儀表板 90 秒掃完"),
+        ("67%",   "自動抓到卡點",     "原本：主管心中的卡點靠記憶\n現在：系統幫你抓出來 2/3"),
+        ("100%",  "決策被回看",       "原本：做完就忘、下次照樣憑感覺\n現在：每個決策強制事後評估"),
+        ("0 元",  "授權成本",         "全部用開源 + Firebase 免費額度\n中型公司可零成本試用"),
     ]
-    card_w = Inches(2.85)
-    card_h = Inches(4.2)
-    gap = Inches(0.2)
-    total_w = card_w * 4 + gap * 3
-    start_x = (SLIDE_W - total_w) // 2
-    y = Inches(2.4)
+    card_w = Inches(5.9)
+    card_h = Inches(2.1)
+    gap_x = Inches(0.3)
+    gap_y = Inches(0.3)
+    start_x = (SLIDE_W - card_w * 2 - gap_x) // 2
+    start_y = Inches(2.4)
 
     for i, (n, t, d) in enumerate(nums):
-        x = start_x + (card_w + gap) * i
-        add_card(s, x, y, card_w, card_h, bg_color=WHITE, corner=0.08)
-        add_text(s, x, y + Inches(0.5), card_w, Inches(1.4),
-                 n, size=56, bold=True, color=HILITE, align=PP_ALIGN.CENTER)
-        add_text(s, x + Inches(0.3), y + Inches(2.2), card_w - Inches(0.6), Inches(0.6),
-                 t, size=18, bold=True, color=DEEP, align=PP_ALIGN.CENTER)
-        add_text(s, x + Inches(0.3), y + Inches(2.9), card_w - Inches(0.6), Inches(1.2),
-                 d, size=12, color=SUBINK, align=PP_ALIGN.CENTER, line_spacing=1.4)
+        col = i % 2
+        row = i // 2
+        x = start_x + (card_w + gap_x) * col
+        y = start_y + (card_h + gap_y) * row
+        add_card(s, x, y, card_w, card_h, bg_color=WHITE, corner=0.05)
+        # 大數字（左側）
+        add_text(s, x + Inches(0.4), y + Inches(0.3), Inches(2.5), Inches(1.5),
+                 n, size=54, bold=True, color=ACCENT, line_spacing=1.0)
+        # 標題（右側上）
+        add_text(s, x + Inches(2.9), y + Inches(0.45), card_w - Inches(3.2), Inches(0.5),
+                 t, size=18, bold=True, color=DEEP)
+        # 描述（右側下）
+        add_text(s, x + Inches(2.9), y + Inches(1.0), card_w - Inches(3.2), Inches(1.0),
+                 d, size=12, color=INK_LITE, line_spacing=1.4)
 
     add_footer(s, 14)
 
@@ -1089,21 +1096,30 @@ def slide_limits():
 def slide_closing():
     s = prs.slides.add_slide(blank_layout)
     add_gradient_bg(s)
-    add_asterisk(s, Inches(11.3), Inches(5.2), 1.4, WHITE)
-    add_asterisk(s, Inches(0.4), Inches(0.6), 0.7, INK_LITE)
 
-    add_text(s, Inches(1.0), Inches(2.2), Inches(11), Inches(1.0),
+    # 大留白置中
+    # 主 take-away — 一句話收尾，這就是觀眾走出會場記得的東西
+    add_text(s, Inches(0.8), Inches(2.9), Inches(11.7), Inches(1.4),
              "工程現實 ≠ 學術理想",
-             size=48, bold=True, color=WHITE)
-    add_text(s, Inches(1.0), Inches(3.3), Inches(11), Inches(2.5),
-             ("我們不假裝每個係數都來自論文，\n"
-              "但每個係數都經過反推校準。\n\n"
-              "比起完美的公式，我們更相信可以解釋的數字。"),
-             size=22, color=INK_LITE, line_spacing=1.6)
+             size=72, bold=True, color=DEEP, align=PP_ALIGN.CENTER, line_spacing=1.0)
 
-    add_pill(s, Inches(4.5), Inches(6.0), Inches(4.3), Inches(0.7),
-             "Thank You · Q & A",
-             bg_color=WHITE, text_color=DEEP, size=22)
+    # 細線（accent 色，視覺呼吸）
+    line = s.shapes.add_shape(MSO_SHAPE.RECTANGLE,
+                               Inches(6.27), Inches(4.45),
+                               Inches(0.8), Emu(15875))
+    line.line.fill.background()
+    line.fill.solid()
+    line.fill.fore_color.rgb = ACCENT
+
+    # 副文 — 整個專案的核心信念
+    add_text(s, Inches(0.8), Inches(4.75), Inches(11.7), Inches(1.2),
+             "比起完美的公式，我們更相信可以解釋的數字。",
+             size=20, color=INK_MID, align=PP_ALIGN.CENTER, line_spacing=1.5)
+
+    # 底部小字 — 取代「Thank You · Q&A」
+    add_text(s, Inches(0.8), Inches(6.6), Inches(11.7), Inches(0.35),
+             "串連系統 v2.2  ·  資管導論 第 13 組",
+             size=10, color=INK_LITE, align=PP_ALIGN.CENTER)
 
 
 # ===========================================================
