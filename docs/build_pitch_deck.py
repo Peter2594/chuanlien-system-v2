@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""串連系統 v2.2 — 簡報產生器（純白極簡風：Apple Keynote / Stripe 取向）"""
+"""串連系統 v2.2 — 簡報產生器（Notion 奇裭風：奶白底 + 暖深棕 + 橘黃 accent）"""
 import sys
 from pptx import Presentation
 from pptx.util import Inches, Pt, Emu
@@ -12,16 +12,16 @@ from lxml import etree
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
-# ============ 配色（純白極簡）============
-BG        = RGBColor(0xFF, 0xFF, 0xFF)  # 純白底
-SOFT_BG   = RGBColor(0xF8, 0xFA, 0xFC)  # 卡片用最淡灰（slate-50）
-INK_DARK  = RGBColor(0x0F, 0x17, 0x2A)  # 主文字 slate-900
-INK_MID   = RGBColor(0x33, 0x40, 0x5C)  # 次文字 slate-700
-INK_LITE  = RGBColor(0x64, 0x74, 0x8B)  # 註解 slate-500
-HAIRLINE  = RGBColor(0xE2, 0xE8, 0xF0)  # 細線 slate-200
-ACCENT    = RGBColor(0x0F, 0x17, 0x2A)  # 主強調用全黑（極簡）
-HOT       = RGBColor(0xE1, 0x14, 0x48)  # 警示紅（少量使用）
-COOL      = RGBColor(0x05, 0x96, 0x69)  # 成功綠（少量使用）
+# ============ 配色（Notion 奇裭風）============
+BG        = RGBColor(0xFA, 0xFA, 0xF7)  # 奶白底（warm off-white）
+SOFT_BG   = RGBColor(0xF5, 0xF4, 0xEE)  # 卡片淡暖灰（stone-100 暖調）
+INK_DARK  = RGBColor(0x1C, 0x19, 0x17)  # 主文字深棕黑（stone-900）
+INK_MID   = RGBColor(0x44, 0x40, 0x3C)  # 次文字暖深灰（stone-700）
+INK_LITE  = RGBColor(0x78, 0x71, 0x6C)  # 註解暖灰（stone-500）
+HAIRLINE  = RGBColor(0xE7, 0xE5, 0xE0)  # 細線暖灰（stone-200）
+ACCENT    = RGBColor(0xD9, 0x77, 0x06)  # 主強調：橘黃（amber-600，Notion brand-ish）
+HOT       = RGBColor(0xDC, 0x26, 0x26)  # 警示紅（red-600）
+COOL      = RGBColor(0x16, 0xA3, 0x4A)  # 成功綠（green-600）
 
 # 對外別名
 WHITE  = INK_DARK   # 「印在底上的標題」改成深字
@@ -347,7 +347,7 @@ def slide_module(num, title, subtitle, scene, before, after,
 
     # 中：BEFORE
     add_card(s, Inches(6.4), Inches(1.85), Inches(3.3), Inches(3.0),
-             bg_color=RGBColor(0xFF, 0xE8, 0xE8), corner=0.05)
+             bg_color=RGBColor(0xFB, 0xEE, 0xEE), corner=0.05)
     bar1 = s.shapes.add_shape(MSO_SHAPE.RECTANGLE,
                               Inches(6.4), Inches(1.85), Inches(3.3), Inches(0.45))
     bar1.line.fill.background()
@@ -360,7 +360,7 @@ def slide_module(num, title, subtitle, scene, before, after,
 
     # 右：AFTER
     add_card(s, Inches(9.85), Inches(1.85), Inches(3.3), Inches(3.0),
-             bg_color=RGBColor(0xE6, 0xF9, 0xEF), corner=0.05)
+             bg_color=RGBColor(0xEE, 0xF6, 0xE8), corner=0.05)
     bar2 = s.shapes.add_shape(MSO_SHAPE.RECTANGLE,
                               Inches(9.85), Inches(1.85), Inches(3.3), Inches(0.45))
     bar2.line.fill.background()
