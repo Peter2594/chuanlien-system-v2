@@ -544,81 +544,94 @@ def slide_calibration():
     add_text(s, Inches(0.8), Inches(0.55), Inches(2), Inches(0.5),
              "方法論", size=14, bold=True, color=INK_LITE)
     add_text(s, Inches(0.8), Inches(0.9), Inches(11), Inches(0.9),
-             "人工權重的四層方法論", size=36, bold=True, color=WHITE)
+             "人工權重的五階段方法論", size=34, bold=True, color=WHITE)
     add_text(s, Inches(0.8), Inches(1.7), Inches(11), Inches(0.5),
-             "16 個人工參數，每一層都有可審查的依據",
-             size=16, color=INK_LITE)
+             "主管訪談 → 等價關係 → 弱先驗 → 測資校準 → 敏感度確認",
+             size=14, color=INK_LITE)
     add_asterisk(s, Inches(11.6), Inches(0.5), 1.0, WHITE)
 
-    # 四層卡片
+    # 五階段卡片
     layers = [
-        ("①", "排序方向",
-         "哪個權重該大",
-         "業界文獻\n(Grove / Edmondson / OHI)",
-         "回答：為什麼 A 比 B 大"),
-        ("②", "等價尺度",
-         "比例該多懸殊",
-         "等價關係\n(2 個交接 ≈ 1 個卡點)",
-         "回答：為什麼是 1.5 不是 1.3"),
-        ("③", "測資校準",
-         "整體幅度多大",
-         "SEED 錨點測試\n(典型過載 ≥ 12 分)",
-         "回答：為什麼過載門檻是 12"),
-        ("④", "敏感度驗證",
-         "權重錯了會怎樣",
-         "±20% 擾動 × 500 次\nTop-3 穩定 93.4%",
-         "回答：萬一數字錯系統會崩嗎"),
+        ("①", "主管訪談",
+         "決定方向",
+         "問主管:\n誰比誰重要?",
+         "卡點 > 案件\n> 交接 > 被提及"),
+        ("②", "等價關係",
+         "決定初始尺度",
+         "問主管:\n1 件 A ≈ 幾件 B?",
+         "1 卡點\n≈ 2.5 案件"),
+        ("③", "弱先驗",
+         "不要一開始放大膽",
+         "依排序給小差距\n(Bayesian 標準)",
+         "v0: 1.3 / 1.2\n/ 1.1 / 1.0"),
+        ("④", "測資校準",
+         "決定調整幅度",
+         "用 SEED + 極端測資\n看誰被低/高估",
+         "v3 收斂: 2.5×1.5\n/ 2.0 / 0.8 / 1.0"),
+        ("⑤", "敏感度確認",
+         "確認穩定性",
+         "±20% 擾動 × 500 次\n看 Top-N 變不變",
+         "Top-3 穩定 93.4%\nSpearman 0.995"),
     ]
-    card_w = Inches(2.95)
-    card_h = Inches(4.0)
-    gap = Inches(0.15)
-    total_w = card_w * 4 + gap * 3
+    card_w = Inches(2.35)
+    card_h = Inches(4.05)
+    gap = Inches(0.12)
+    total_w = card_w * 5 + gap * 4
     start_x = (SLIDE_W - total_w) // 2
-    y = Inches(2.45)
+    y = Inches(2.4)
 
     for i, (num, title, sub, body, qa) in enumerate(layers):
         x = start_x + (card_w + gap) * i
         add_card(s, x, y, card_w, card_h, bg_color=WHITE, corner=0.06)
         # 編號
-        add_text(s, x + Inches(0.3), y + Inches(0.3), Inches(0.8), Inches(0.7),
-                 num, size=36, bold=True, color=HILITE)
+        add_text(s, x + Inches(0.25), y + Inches(0.25), Inches(0.7), Inches(0.6),
+                 num, size=30, bold=True, color=HILITE)
         # 標題
-        add_text(s, x + Inches(0.3), y + Inches(1.0), card_w - Inches(0.6), Inches(0.5),
-                 title, size=20, bold=True, color=DEEP)
+        add_text(s, x + Inches(0.25), y + Inches(0.9), card_w - Inches(0.5), Inches(0.5),
+                 title, size=18, bold=True, color=DEEP)
         # 副標
-        add_text(s, x + Inches(0.3), y + Inches(1.55), card_w - Inches(0.6), Inches(0.4),
-                 sub, size=11, color=INK_LITE)
+        add_text(s, x + Inches(0.25), y + Inches(1.4), card_w - Inches(0.5), Inches(0.35),
+                 sub, size=10, color=INK_LITE)
         # 細線分隔
         ln = s.shapes.add_connector(1,
-            x + Inches(0.3), y + Inches(2.1),
-            x + card_w - Inches(0.3), y + Inches(2.1))
+            x + Inches(0.25), y + Inches(1.85),
+            x + card_w - Inches(0.25), y + Inches(1.85))
         ln.line.color.rgb = HAIRLINE
         ln.line.width = Pt(0.75)
-        # 量化方法 / 依據
-        add_text(s, x + Inches(0.3), y + Inches(2.25), card_w - Inches(0.6), Inches(1.1),
-                 body, size=12, bold=True, color=DEEP, line_spacing=1.4)
-        # Q&A 對應
-        add_text(s, x + Inches(0.3), y + Inches(3.35), card_w - Inches(0.6), Inches(0.55),
-                 qa, size=10, color=INK_LITE, line_spacing=1.3)
+        # 作法
+        add_text(s, x + Inches(0.25), y + Inches(2.0), card_w - Inches(0.5), Inches(1.0),
+                 body, size=11, bold=True, color=DEEP, line_spacing=1.4)
+        # 量化證據 / 範例
+        add_text(s, x + Inches(0.25), y + Inches(3.05), card_w - Inches(0.5), Inches(0.85),
+                 qa, size=10, color=HILITE, line_spacing=1.4)
+
+        # 箭頭（卡片之間）
+        if i < 4:
+            chev = s.shapes.add_shape(MSO_SHAPE.RIGHT_ARROW,
+                                       x + card_w, y + Inches(1.85),
+                                       gap, Inches(0.25))
+            chev.line.fill.background()
+            chev.fill.solid()
+            chev.fill.fore_color.rgb = HAIRLINE
 
     # 底部量化總結
-    bottom_y = Inches(6.55)
+    bottom_y = Inches(6.6)
     add_text(s, Inches(0.8), bottom_y, Inches(12), Inches(0.4),
-             "量化證據總表",
-             size=11, bold=True, color=HILITE)
+             "量化證據",
+             size=10, bold=True, color=HILITE)
     summary = [
         ("16 個",   "人工權重"),
-        ("4 層",    "可審查依據"),
+        ("5 階段",  "可審查依據"),
         ("500 次",  "敏感度擾動"),
-        ("93.4%",   "Top-3 排名穩定"),
+        ("93.4%",   "Top-3 穩定"),
         ("0.995",   "Spearman ρ"),
     ]
     sw = Inches(2.4)
     for i, (val, label) in enumerate(summary):
         x = Inches(0.8) + sw * i
-        add_text(s, x, bottom_y + Inches(0.35), sw, Inches(0.35),
-                 val, size=18, bold=True, color=DEEP)
-        add_text(s, x, bottom_y + Inches(0.7), sw, Inches(0.25),
+        add_text(s, x, bottom_y + Inches(0.3), sw, Inches(0.3),
+                 val, size=16, bold=True, color=DEEP)
+        add_text(s, x, bottom_y + Inches(0.6), sw, Inches(0.25),
                  label, size=9, color=INK_LITE)
 
     add_footer(s, 8)
