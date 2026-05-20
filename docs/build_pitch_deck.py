@@ -277,14 +277,23 @@ def slide_overview():
     add_text(s, Inches(0.8), Inches(0.6), Inches(8), Inches(0.8),
              "解法", size=44, bold=True, color=WHITE)
     add_text(s, Inches(0.8), Inches(1.45), Inches(11), Inches(0.6),
-             "把三個問題拆成三個模組，背後用 25+ 演算法支撐",
+             "三個問題 → 三個模組 → 三張一眼就懂的圖",
              size=18, color=INK_LITE)
     add_asterisk(s, Inches(11.6), Inches(0.5), 1.0, WHITE)
 
     mods = [
-        ("員工負載", "誰快撐不住了", "Empirical Percentile · Time Decay\nGini Coefficient", "P75/P90/P95"),
-        ("組織健康度", "哪裡卡住了", "BM25F · Asymmetric Detection\n6D Weighted Scoring", "權重 22/18/15/18/12/15"),
-        ("決策影響", "決策有效嗎", "Cohort Adjustment\nLinear Regression Baseline", "v2.2 學術創舉"),
+        ("員工負載",   "誰快撐不住了",
+         "把分散訊號加總成一個分數，\n排出真正最忙的人",
+         "一條彩色長條圖",
+         "3 秒看完全部員工狀態"),
+        ("組織健康度", "哪裡卡住了",
+         "六個面向同時體檢，\n看哪邊凹下去",
+         "雷達圖 + 待辦清單",
+         "業績爛之前先看到"),
+        ("決策影響",   "決策有效嗎",
+         "跟同期其他主管比，\n扣掉大環境影響",
+         "主管排行 + 趨勢圖",
+         "不再被大盤冤枉"),
     ]
     card_w = Inches(3.9)
     card_h = Inches(4.6)
@@ -293,7 +302,7 @@ def slide_overview():
     start_x = (SLIDE_W - total_w) // 2
     y = Inches(2.2)
 
-    for i, (name, q, algo, tag) in enumerate(mods):
+    for i, (name, q, do, out, tag) in enumerate(mods):
         x = start_x + (card_w + gap) * i
         add_card(s, x, y, card_w, card_h, bg_color=WHITE, corner=0.06)
         # 上方色塊
@@ -305,16 +314,21 @@ def slide_overview():
         # 標題
         add_text(s, x + Inches(0.4), y + Inches(0.75), card_w - Inches(0.8), Inches(0.7),
                  name, size=26, bold=True, color=DEEP)
-        # Q
+        # Q（主管在問什麼）
         add_text(s, x + Inches(0.4), y + Inches(1.5), card_w - Inches(0.8), Inches(0.5),
                  f"→ {q}", size=14, color=CORAL)
-        # 算法
-        add_text(s, x + Inches(0.4), y + Inches(2.2), card_w - Inches(0.8), Inches(0.5),
-                 "核心演算法", size=12, bold=True, color=SUBINK)
-        add_text(s, x + Inches(0.4), y + Inches(2.55), card_w - Inches(0.8), Inches(1.5),
-                 algo, size=13, color=DEEP, line_spacing=1.4)
-        # tag pill
-        add_pill(s, x + Inches(0.4), y + Inches(3.85),
+        # 做什麼
+        add_text(s, x + Inches(0.4), y + Inches(2.15), card_w - Inches(0.8), Inches(0.35),
+                 "做什麼", size=11, bold=True, color=INK_LITE)
+        add_text(s, x + Inches(0.4), y + Inches(2.5), card_w - Inches(0.8), Inches(0.9),
+                 do, size=13, color=DEEP, line_spacing=1.4)
+        # 產出
+        add_text(s, x + Inches(0.4), y + Inches(3.35), card_w - Inches(0.8), Inches(0.35),
+                 "產出", size=11, bold=True, color=INK_LITE)
+        add_text(s, x + Inches(0.4), y + Inches(3.7), card_w - Inches(0.8), Inches(0.4),
+                 out, size=13, bold=True, color=DEEP)
+        # 底部 tag — 一句直覺結論
+        add_pill(s, x + Inches(0.4), y + Inches(4.0),
                  card_w - Inches(0.8), Inches(0.45),
                  tag, bg_color=SOFT_BG, text_color=DEEP, size=12)
 
