@@ -201,9 +201,59 @@ export function OrgHealthCard({
   const pinnedSnap = pinnedWeek !== null ? series[pinnedWeek] : null;
   const pinnedWeekLabel = pinnedWeek !== null ? trendData[pinnedWeek].week : "";
 
-  // 顯示哪些維度最弱（前 2 名）
+  // 把抽象分數翻成「具體待辦數」 — 例：「還有 3 件 P90+ 卡點」
+  const actionable = useMemo(() => {
+    const nowMs = +NOW;
+    const weekStartMs = nowMs - 7 * 86400000;
+
+    const criticalBlockers = blockers
+      .filter((b) => b.status !== "resolved")
+      .map((b) => analyzeBlockerRecord(b, blockers, history, NOW))
+      .filter((a) => a.level === "critical" || a.level === "high").length;
+
+    const overdueDecisions = decisions.filter((d) => {
+      if (!d.decidedAt || !d.dueDate || d.dueDate === "即時生效") return false;
+      if (new Date(d.decidedAt) > NOW) return false;
+      if (new Date(d.dueDate) >= NOW) return false;
+      if (d.completedAt && new Date(d.completedAt) <= NOW) return false;
+      return true;
+    }).length;
+
+    const overdueHandoffs = handoffs.filter(
+      (h) => h.status === "待簽收" && (h.hoursOverdue || 0) > 0,
+    ).length;
+
+    const activeHandoffs = handoffs.filter((h) => new Date(h.createdAt) <= NOW);
+    const overloaded = analyzeEmployeeLoad(reports, activeHandoffs, employees, NOW)
+      .filter((l) => l.level === "overload").length;
+
+    const activeDepts = departments
+      .filter((d) => d.active && d.name !== "營運與管理層")
+      .map((d) => d.name);
+    const submittedDepts = new Set(
+      reports
+        .filter((r) => r.submittedAt && +new Date(r.submittedAt) > weekStartMs)
+        .map((r) => r.dept),
+    );
+    const notSubmitted = activeDepts.filter((d) => !submittedDepts.has(d)).length;
+
+    return {
+      blockerHealth:      criticalBlockers > 0 ? `還有 ${criticalBlockers} 件 P90+ 嚴重卡點` : "卡點都在控制中",
+      decisionTimeliness: overdueDecisions  > 0 ? `還有 ${overdueDecisions} 件決策已逾期`    : "決策都按時完成",
+      handoffSmoothness:  overdueHandoffs   > 0 ? `還有 ${overdueHandoffs} 件交接逾時待簽收` : "交接全部按時",
+      loadBalance:        overloaded        > 0 ? `有 ${overloaded} 人負載過高`              : "負載分佈健康",
+      crossDept:          "部門間有單向溝通積壓",
+      reportQuality:      notSubmitted      > 0 ? `本週還有 ${notSubmitted} 部門未交週報`    : "本週週報全數繳交",
+    } as Record<string, string>;
+  }, [blockers, decisions, handoffs, employees, reports, departments, history]);
+
+  // 顯示哪些維度最弱（前 2 名）— 同時帶上 actionable 文字
   const weakAxes = [...AXIS_LABELS]
-    .map((a) => ({ ...a, value: (current as any)[a.key] as number }))
+    .map((a) => ({
+      ...a,
+      value: (current as any)[a.key] as number,
+      actionable: actionable[a.key] ?? a.desc,
+    }))
     .sort((a, b) => a.value - b.value)
     .slice(0, 2);
 
@@ -503,10 +553,11 @@ export function OrgHealthCard({
                 <div key={a.key} className="flex items-center gap-3 bg-white rounded-lg p-3 border border-slate-200/70">
                   <div className={cn("w-1 h-10 rounded-full", meta.bgColor)} />
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs font-bold text-slate-800">{a.short}</div>
-                    <div className="text-[10px] text-slate-500 truncate">{a.desc}</div>
+                    <div className={cn("text-sm font-bold", meta.color)}>{a.actionable}</div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">
+                      {a.short}　·　目前分數 {a.value.toFixed(0)} / 100
+                    </div>
                   </div>
-                  <div className={cn("text-xl font-black", meta.color)}>{a.value.toFixed(0)}</div>
                 </div>
               );
             })}
