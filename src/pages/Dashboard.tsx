@@ -310,10 +310,10 @@ export default function Dashboard({
               {data.activeBlockers.length}
             </span>
             <span className="text-sm text-slate-500 font-medium">筆活躍</span>
-            <span className="ml-auto text-[10px] font-mono">
-              <span className="text-red-500 font-bold">{data.p95Blockers.length} P95+</span>
+            <span className="ml-auto text-[10px]">
+              <span className="text-red-500 font-bold">{data.p95Blockers.length} 件極端</span>
               <span className="text-slate-300 mx-1">/</span>
-              <span className="text-amber-600 font-bold">{data.p90Blockers.length} P90+</span>
+              <span className="text-amber-600 font-bold">{data.p90Blockers.length} 件嚴重</span>
             </span>
           </div>
 

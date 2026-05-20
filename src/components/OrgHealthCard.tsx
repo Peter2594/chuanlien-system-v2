@@ -145,7 +145,7 @@ function resolveEventItems(
 }
 
 const AXIS_LABELS = [
-  { key: "blockerHealth",      short: "卡點健康", desc: "P95+ 卡點越少越健康" },
+  { key: "blockerHealth",      short: "卡點健康", desc: "極端拖延的卡點越少越健康" },
   { key: "decisionTimeliness", short: "決策及時", desc: "逾期決策越少越健康" },
   { key: "handoffSmoothness",  short: "交接流暢", desc: "待簽收逾時越少越健康" },
   { key: "loadBalance",        short: "負載均衡", desc: "Gini > 0.35 觸發管理警示" },
@@ -201,7 +201,7 @@ export function OrgHealthCard({
   const pinnedSnap = pinnedWeek !== null ? series[pinnedWeek] : null;
   const pinnedWeekLabel = pinnedWeek !== null ? trendData[pinnedWeek].week : "";
 
-  // 把抽象分數翻成「具體待辦數」 — 例：「還有 3 件 P90+ 卡點」
+  // 把抽象分數翻成「具體待辦數」 — 例：「還有 3 件嚴重卡點」
   const actionable = useMemo(() => {
     const nowMs = +NOW;
     const weekStartMs = nowMs - 7 * 86400000;
@@ -238,7 +238,7 @@ export function OrgHealthCard({
     const notSubmitted = activeDepts.filter((d) => !submittedDepts.has(d)).length;
 
     return {
-      blockerHealth:      criticalBlockers > 0 ? `還有 ${criticalBlockers} 件 P90+ 嚴重卡點` : "卡點都在控制中",
+      blockerHealth:      criticalBlockers > 0 ? `還有 ${criticalBlockers} 件嚴重卡點` : "卡點都在控制中",
       decisionTimeliness: overdueDecisions  > 0 ? `還有 ${overdueDecisions} 件決策已逾期`    : "決策都按時完成",
       handoffSmoothness:  overdueHandoffs   > 0 ? `還有 ${overdueHandoffs} 件交接逾時待簽收` : "交接全部按時",
       loadBalance:        overloaded        > 0 ? `有 ${overloaded} 人負載過高`              : "負載分佈健康",

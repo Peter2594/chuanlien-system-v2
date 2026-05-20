@@ -218,7 +218,7 @@ export default function BlockerAnalyticsPage({ blockers, history }: Props) {
                                 <StatMini label="負責人"   value={a.blocker?.owner || "-"} />
                                 <StatMini label="關聯案件" value={a.blocker?.caseId || "-"} />
                                 <StatMini
-                                  label="同類 P75 / P90"
+                                  label="同類一般 / 警戒"
                                   value={a.hasData ? `${a.p75.toFixed(0)} / ${a.p90.toFixed(0)} 天` : "尚無樣本"}
                                 />
                               </div>
@@ -231,7 +231,7 @@ export default function BlockerAnalyticsPage({ blockers, history }: Props) {
                                   : "bg-emerald-50 text-emerald-800",
                                 )}>
                                   <strong className="font-bold">處理建議：</strong>
-                                  {a.level === "critical" && "已達極高風險（P95+），請立刻召開協調會議。"}
+                                  {a.level === "critical" && "已達極端拖延（極高風險），請立刻召開協調會議。"}
                                   {a.level === "high"     && "建議在本週內安排升級處理。"}
                                   {a.level === "medium"   && "進入關注區，請追蹤後續進度。"}
                                   {a.level === "normal"   && "仍在正常處理時程內。"}
@@ -318,9 +318,9 @@ export default function BlockerAnalyticsPage({ blockers, history }: Props) {
                 <span className="ml-auto text-[11px] text-slate-400 font-medium">{c.count} 筆</span>
               </div>
               <div className="grid grid-cols-3 gap-2 text-center">
-                <Stat label="平均" value={c.mean.toFixed(1)} unit="天" />
-                <Stat label="P75"  value={c.p75.toFixed(0)}  unit="天" />
-                <Stat label="P90"  value={c.p90.toFixed(0)}  unit="天" />
+                <Stat label="平均"     value={c.mean.toFixed(1)} unit="天" />
+                <Stat label="一般上限" value={c.p75.toFixed(0)}  unit="天" />
+                <Stat label="警戒線"   value={c.p90.toFixed(0)}  unit="天" />
               </div>
             </motion.button>
           ))}
