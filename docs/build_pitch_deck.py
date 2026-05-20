@@ -352,7 +352,7 @@ def slide_overview():
 # Slide 5–7 — 三大模組 (員工負載 / 健康度 / 決策影響)
 # ===========================================================
 def slide_module(num, title, subtitle, scene, before, after,
-                 refs, page):
+                 refs, page, algo=None):
     """直觀版：場景 → BEFORE / AFTER → 為什麼相信"""
     s = prs.slides.add_slide(blank_layout)
     add_gradient_bg(s)
@@ -362,6 +362,28 @@ def slide_module(num, title, subtitle, scene, before, after,
              title, size=32, bold=True, color=WHITE)
     add_text(s, Inches(0.8), Inches(1.32), Inches(11), Inches(0.4),
              subtitle, size=14, color=INK_LITE)
+    # 演算法 chip — 標題右上角，淡灰圓角小卡
+    if algo:
+        chip = s.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE,
+                                   Inches(7.5), Inches(0.95),
+                                   Inches(5.3), Inches(0.45))
+        chip.adjustments[0] = 0.4
+        chip.line.color.rgb = HAIRLINE
+        chip.line.width = Pt(0.75)
+        chip.fill.solid()
+        chip.fill.fore_color.rgb = SOFT_BG
+        tf = chip.text_frame
+        tf.margin_left = Inches(0.15); tf.margin_right = Inches(0.15)
+        tf.margin_top = Emu(0); tf.margin_bottom = Emu(0)
+        tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+        p = tf.paragraphs[0]
+        p.alignment = PP_ALIGN.CENTER
+        run = p.add_run()
+        run.text = f"演算法　{algo}"
+        run.font.name = CN
+        run.font.size = Pt(10)
+        run.font.bold = True
+        run.font.color.rgb = INK_MID
     add_asterisk(s, Inches(11.6), Inches(0.3), 0.8, WHITE)
 
     # 左：場景對話框
@@ -468,6 +490,7 @@ def slide_load():
              "命中率 100%。"),
         ],
         page=5,
+        algo="經驗百分位 + 時間衰減 + Gini 不均度",
     )
 
 
@@ -514,6 +537,7 @@ def slide_health():
              "差距從原本 3% 變 14%（看得清楚了）。"),
         ],
         page=6,
+        algo="六維加權評分 + 不對稱偵測",
     )
 
 
@@ -559,6 +583,7 @@ def slide_impact():
              "跟管理層事後排序一致。"),
         ],
         page=7,
+        algo="同期校準 (DiD) + 線性回歸",
     )
 
 
