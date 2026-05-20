@@ -286,24 +286,27 @@ def slide_overview():
         ("員工負載",   "誰快撐不住了",
          "把分散訊號加總成一個分數，\n排出真正最忙的人",
          "一條彩色長條圖",
-         "3 秒看完全部員工狀態"),
+         "3 秒看完全部員工狀態",
+         "經驗百分位 + 時間衰減 + Gini 不均度"),
         ("組織健康度", "哪裡卡住了",
          "六個面向同時體檢，\n看哪邊凹下去",
          "雷達圖 + 待辦清單",
-         "業績爛之前先看到"),
+         "業績爛之前先看到",
+         "六維加權評分 + 不對稱偵測"),
         ("決策影響",   "決策有效嗎",
          "跟同期其他主管比，\n扣掉大環境影響",
          "主管排行 + 趨勢圖",
-         "不再被大盤冤枉"),
+         "不再被大盤冤枉",
+         "同期校準 (DiD) + 線性回歸"),
     ]
     card_w = Inches(3.9)
-    card_h = Inches(4.6)
+    card_h = Inches(5.0)  # 加高一點容納演算法註腳
     gap = Inches(0.25)
     total_w = card_w * 3 + gap * 2
     start_x = (SLIDE_W - total_w) // 2
-    y = Inches(2.2)
+    y = Inches(2.0)
 
-    for i, (name, q, do, out, tag) in enumerate(mods):
+    for i, (name, q, do, out, tag, algo) in enumerate(mods):
         x = start_x + (card_w + gap) * i
         add_card(s, x, y, card_w, card_h, bg_color=WHITE, corner=0.06)
         # 上方色塊
@@ -329,9 +332,18 @@ def slide_overview():
         add_text(s, x + Inches(0.4), y + Inches(3.7), card_w - Inches(0.8), Inches(0.4),
                  out, size=13, bold=True, color=DEEP)
         # 底部 tag — 一句直覺結論
-        add_pill(s, x + Inches(0.4), y + Inches(4.0),
+        add_pill(s, x + Inches(0.4), y + Inches(4.05),
                  card_w - Inches(0.8), Inches(0.45),
                  tag, bg_color=SOFT_BG, text_color=DEEP, size=12)
+        # ★ 演算法註腳（細線分隔 + 灰小字）
+        ln = s.shapes.add_connector(1,
+            x + Inches(0.4), y + Inches(4.65),
+            x + card_w - Inches(0.4), y + Inches(4.65))
+        ln.line.color.rgb = HAIRLINE
+        ln.line.width = Pt(0.75)
+        add_text(s, x + Inches(0.4), y + Inches(4.7),
+                 card_w - Inches(0.8), Inches(0.3),
+                 algo, size=10, color=INK_LITE, line_spacing=1.3)
 
     add_footer(s, 4)
 
