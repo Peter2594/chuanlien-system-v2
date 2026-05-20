@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""串連系統 v2.2 — 簡報產生器（日經編輯風：米底 + 深藍 + 朱紅）"""
+"""串連系統 v2.2 — 簡報產生器（純白極簡風：Apple Keynote / Stripe 取向）"""
 import sys
 from pptx import Presentation
 from pptx.util import Inches, Pt, Emu
@@ -12,26 +12,25 @@ from lxml import etree
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
-# ============ 配色（編輯雜誌風）============
-CREAM     = RGBColor(0xF5, 0xF0, 0xE5)  # 米色底
-NAVY      = RGBColor(0x1B, 0x2A, 0x4E)  # 深藍主色
-VERMIL    = RGBColor(0xC1, 0x3C, 0x2E)  # 朱紅
-GOLD      = RGBColor(0xB8, 0x92, 0x3C)  # 金色
-INK_BLACK = RGBColor(0x1A, 0x1A, 0x1A)  # 內文黑
-PAPER     = RGBColor(0xFA, 0xF6, 0xEC)  # 紙白（卡片）
-GREY      = RGBColor(0x6B, 0x66, 0x5C)  # 灰色註解
-LINE      = RGBColor(0x9C, 0x95, 0x85)  # 細線
-SOFT_RED  = RGBColor(0xF2, 0xDC, 0xD3)  # 朱紅淡底
-SOFT_GRN  = RGBColor(0xDC, 0xE3, 0xD0)  # 葉綠淡底
+# ============ 配色（純白極簡）============
+BG        = RGBColor(0xFF, 0xFF, 0xFF)  # 純白底
+SOFT_BG   = RGBColor(0xF8, 0xFA, 0xFC)  # 卡片用最淡灰（slate-50）
+INK_DARK  = RGBColor(0x0F, 0x17, 0x2A)  # 主文字 slate-900
+INK_MID   = RGBColor(0x33, 0x40, 0x5C)  # 次文字 slate-700
+INK_LITE  = RGBColor(0x64, 0x74, 0x8B)  # 註解 slate-500
+HAIRLINE  = RGBColor(0xE2, 0xE8, 0xF0)  # 細線 slate-200
+ACCENT    = RGBColor(0x0F, 0x17, 0x2A)  # 主強調用全黑（極簡）
+HOT       = RGBColor(0xE1, 0x14, 0x48)  # 警示紅（少量使用）
+COOL      = RGBColor(0x05, 0x96, 0x69)  # 成功綠（少量使用）
 
-# 對外別名（標題原本印在深色底用 WHITE，現在改印 NAVY 於米底）
-WHITE  = NAVY      # 原本「印在深色背景的白色標題」 → 改成深藍
-DEEP   = NAVY
-INK    = NAVY
-SUBINK = GREY
-HILITE = VERMIL
-CORAL  = VERMIL
-SUBTITLE_WHITE = GREY  # 副標原本淡白，現在改成灰
+# 對外別名
+WHITE  = INK_DARK   # 「印在底上的標題」改成深字
+DEEP   = INK_DARK
+INK    = INK_DARK
+SUBINK = INK_LITE
+HILITE = ACCENT
+CORAL  = HOT
+PAPER  = SOFT_BG
 
 CN = "Microsoft JhengHei"  # Windows 內建繁中字型
 
@@ -46,27 +45,22 @@ blank_layout = prs.slide_layouts[6]
 
 
 def add_gradient_bg(slide):
-    """背景：米色實底 + 上方深藍細線 + 角落金色裝飾"""
+    """純白底 + 底部 hairline 細線（極簡 Stripe / Keynote 風）"""
     bg = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, SLIDE_W, SLIDE_H)
     bg.line.fill.background()
     bg.fill.solid()
-    bg.fill.fore_color.rgb = CREAM
+    bg.fill.fore_color.rgb = BG
     spTree = bg._element.getparent()
     spTree.remove(bg._element)
     spTree.insert(2, bg._element)
 
-    # 頂部細裝飾：深藍色帶 + 朱紅短線
-    top = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, SLIDE_W, Inches(0.18))
-    top.line.fill.background()
-    top.fill.solid()
-    top.fill.fore_color.rgb = NAVY
-
-    accent = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE,
-                                     Inches(0), 0, Inches(2.0), Inches(0.18))
-    accent.line.fill.background()
-    accent.fill.solid()
-    accent.fill.fore_color.rgb = VERMIL
-
+    # 底部極細 hairline（slate-200）
+    hl = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE,
+                                 Inches(0.8), Inches(7.05),
+                                 Inches(11.7), Emu(9525))  # ~0.01"
+    hl.line.fill.background()
+    hl.fill.solid()
+    hl.fill.fore_color.rgb = HAIRLINE
     return bg
 
 
@@ -92,19 +86,10 @@ def add_text(slide, x, y, w, h, text, *, size=18, bold=False, color=WHITE,
     return tb
 
 
-def add_asterisk(slide, x, y, size_in=1.1, color=WHITE, alpha=None):
-    """裝飾用的雪花星號 (8 角)"""
-    s = Inches(size_in)
-    shp = slide.shapes.add_shape(MSO_SHAPE.STAR_8_POINT, x, y, s, s)
-    shp.line.fill.background()
-    shp.fill.solid()
-    shp.fill.fore_color.rgb = color
-    if alpha is not None:
-        # 透明度
-        sf = shp.fill.fore_color._xClr
-        # 簡單：不設透明
-        pass
-    return shp
+def add_asterisk(slide, x, y, size_in=1.1, color=None, alpha=None):
+    """極簡風：把原本的「雪花星號」改成右上角編號小色塊（黑底白字）"""
+    # 不畫星號了 — 極簡風不需要裝飾
+    return None
 
 
 def add_pill(slide, x, y, w, h, text, *, bg_color=WHITE, text_color=DEEP,
@@ -134,32 +119,29 @@ def add_pill(slide, x, y, w, h, text, *, bg_color=WHITE, text_color=DEEP,
     return shp
 
 
-def add_card(slide, x, y, w, h, *, bg_color=WHITE, corner=0.08, alpha=False):
-    """白色圓角卡片（無文字）"""
+def add_card(slide, x, y, w, h, *, bg_color=None, corner=0.04, alpha=False):
+    """極簡風卡片：預設透明 + hairline 邊框；只有特意傳 bg_color 才填色"""
     shp = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, x, y, w, h)
     shp.adjustments[0] = corner
-    shp.line.fill.background()
-    shp.fill.solid()
-    shp.fill.fore_color.rgb = bg_color
-    if alpha:
-        # 半透明白
-        spPr = shp.fill._xPr
-        for el in spPr.findall(qn('a:solidFill')):
-            spPr.remove(el)
-        fill_xml = """<a:solidFill xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
-          <a:srgbClr val="FFFFFF"><a:alpha val="35000"/></a:srgbClr>
-        </a:solidFill>"""
-        spPr.insert(0, etree.fromstring(fill_xml))
+    # 永遠用 hairline 邊框
+    shp.line.color.rgb = HAIRLINE
+    shp.line.width = Pt(0.75)
+    if bg_color is None or bg_color == INK_DARK:
+        # 透明卡片（只有邊框）
+        shp.fill.background()
+    else:
+        shp.fill.solid()
+        shp.fill.fore_color.rgb = bg_color
     return shp
 
 
 def add_footer(slide, page_num, total=15):
-    add_text(slide, Inches(0.5), Inches(7.05), Inches(6), Inches(0.35),
+    add_text(slide, Inches(0.8), Inches(7.15), Inches(6), Inches(0.3),
              "串連系統 v2.2 · 資管導論 第 13 組",
-             size=10, color=WHITE)
-    add_text(slide, Inches(11.5), Inches(7.05), Inches(1.5), Inches(0.35),
+             size=9, color=INK_LITE)
+    add_text(slide, Inches(11.0), Inches(7.15), Inches(1.5), Inches(0.3),
              f"{page_num:02d} / {total:02d}",
-             size=10, color=WHITE, align=PP_ALIGN.RIGHT)
+             size=9, color=INK_LITE, align=PP_ALIGN.RIGHT)
 
 
 def add_chevron(slide, x, y, size_in=0.5, color=HILITE):
@@ -197,7 +179,7 @@ def slide_cover():
     # 副標 italic
     add_text(s, Inches(0.8), Inches(4.6), Inches(11), Inches(0.6),
              "Chuanlien · A Decision Support Platform",
-             size=18, color=RGBColor(0xE8, 0xE0, 0xFF))
+             size=18, color=INK_LITE)
 
     # 右側裝飾雪花
     add_asterisk(s, Inches(11.3), Inches(4.2), 1.4, WHITE)
@@ -262,7 +244,7 @@ def slide_pain():
              "痛點", size=44, bold=True, color=WHITE)
     add_text(s, Inches(0.8), Inches(1.45), Inches(11), Inches(0.6),
              "管理層每天面對的問題其實只有三個",
-             size=18, color=RGBColor(0xE8, 0xE0, 0xFF))
+             size=18, color=INK_LITE)
     add_asterisk(s, Inches(11.6), Inches(0.5), 1.0, WHITE)
 
     pains = [
@@ -296,7 +278,7 @@ def slide_overview():
              "解法", size=44, bold=True, color=WHITE)
     add_text(s, Inches(0.8), Inches(1.45), Inches(11), Inches(0.6),
              "把三個問題拆成三個模組，背後用 25+ 演算法支撐",
-             size=18, color=RGBColor(0xE8, 0xE0, 0xFF))
+             size=18, color=INK_LITE)
     add_asterisk(s, Inches(11.6), Inches(0.5), 1.0, WHITE)
 
     mods = [
@@ -334,7 +316,7 @@ def slide_overview():
         # tag pill
         add_pill(s, x + Inches(0.4), y + Inches(3.85),
                  card_w - Inches(0.8), Inches(0.45),
-                 tag, bg_color=RGBColor(0xEC, 0xE4, 0xFF), text_color=DEEP, size=12)
+                 tag, bg_color=SOFT_BG, text_color=DEEP, size=12)
 
     add_footer(s, 4)
 
@@ -348,11 +330,11 @@ def slide_module(num, title, subtitle, scene, before, after,
     s = prs.slides.add_slide(blank_layout)
     add_gradient_bg(s)
     add_text(s, Inches(0.8), Inches(0.4), Inches(2), Inches(0.4),
-             f"模組 0{num}", size=12, bold=True, color=RGBColor(0xE8, 0xE0, 0xFF))
+             f"模組 0{num}", size=12, bold=True, color=INK_LITE)
     add_text(s, Inches(0.8), Inches(0.7), Inches(11), Inches(0.7),
              title, size=32, bold=True, color=WHITE)
     add_text(s, Inches(0.8), Inches(1.32), Inches(11), Inches(0.4),
-             subtitle, size=14, color=RGBColor(0xE8, 0xE0, 0xFF))
+             subtitle, size=14, color=INK_LITE)
     add_asterisk(s, Inches(11.6), Inches(0.3), 0.8, WHITE)
 
     # 左：場景對話框
@@ -394,9 +376,7 @@ def slide_module(num, title, subtitle, scene, before, after,
              "為什麼相信這個數字？", size=13, bold=True, color=WHITE)
 
     ref_labels = ["經典管理書這樣寫", "業界這樣做", "我們驗證過"]
-    ref_colors = [RGBColor(0x6C, 0x5C, 0xE7),
-                  RGBColor(0x4A, 0x90, 0xE2),
-                  RGBColor(0xE2, 0x82, 0x4A)]
+    ref_colors = [INK_DARK, INK_DARK, INK_DARK]
     cw = Inches(4.18)
     ch = Inches(1.7)
     gap = Inches(0.15)
@@ -562,11 +542,11 @@ def slide_calibration():
     s = prs.slides.add_slide(blank_layout)
     add_gradient_bg(s)
     add_text(s, Inches(0.8), Inches(0.55), Inches(2), Inches(0.5),
-             "方法論", size=14, bold=True, color=RGBColor(0xE8, 0xE0, 0xFF))
+             "方法論", size=14, bold=True, color=INK_LITE)
     add_text(s, Inches(0.8), Inches(0.9), Inches(11), Inches(0.9),
              "反推校準（Reverse Calibration）", size=36, bold=True, color=WHITE)
     add_text(s, Inches(0.8), Inches(1.7), Inches(11), Inches(0.5),
-             "為什麼我們的人工參數不是憑空捏的", size=16, color=RGBColor(0xE8, 0xE0, 0xFF))
+             "為什麼我們的人工參數不是憑空捏的", size=16, color=INK_LITE)
     add_asterisk(s, Inches(11.6), Inches(0.5), 1.0, WHITE)
 
     steps = [
@@ -608,7 +588,7 @@ def slide_calibration():
     # 底部口號
     add_pill(s, Inches(2.5), Inches(6.6), Inches(8.3), Inches(0.45),
              "「9 個係數不是 9 個獨立決定，是 1 個學理依據的離散採樣」",
-             bg_color=RGBColor(0xEC, 0xE4, 0xFF), text_color=DEEP, size=14)
+             bg_color=SOFT_BG, text_color=DEEP, size=14)
 
     add_footer(s, 8)
 
@@ -620,12 +600,12 @@ def slide_bm25f():
     s = prs.slides.add_slide(blank_layout)
     add_gradient_bg(s)
     add_text(s, Inches(0.8), Inches(0.55), Inches(2), Inches(0.5),
-             "亮點 01", size=14, bold=True, color=RGBColor(0xE8, 0xE0, 0xFF))
+             "亮點 01", size=14, bold=True, color=INK_LITE)
     add_text(s, Inches(0.8), Inches(0.9), Inches(11), Inches(0.9),
              "智能搜尋", size=40, bold=True, color=WHITE)
     add_text(s, Inches(0.8), Inches(1.7), Inches(11), Inches(0.5),
              "輸入「太洋」找得到「太洋證券法律意見書」 — Ctrl+F 做不到的事",
-             size=16, color=RGBColor(0xE8, 0xE0, 0xFF))
+             size=16, color=INK_LITE)
     add_asterisk(s, Inches(11.6), Inches(0.5), 1.0, WHITE)
 
     # 左：欄位權重圖示
@@ -689,12 +669,12 @@ def slide_whatif():
     s = prs.slides.add_slide(blank_layout)
     add_gradient_bg(s)
     add_text(s, Inches(0.8), Inches(0.55), Inches(2), Inches(0.5),
-             "亮點 02", size=14, bold=True, color=RGBColor(0xE8, 0xE0, 0xFF))
+             "亮點 02", size=14, bold=True, color=INK_LITE)
     add_text(s, Inches(0.8), Inches(0.9), Inches(11), Inches(0.9),
              "What-if 模擬器", size=40, bold=True, color=WHITE)
     add_text(s, Inches(0.8), Inches(1.7), Inches(11), Inches(0.5),
              "不用真的改人事，先模擬看看",
-             size=16, color=RGBColor(0xE8, 0xE0, 0xFF))
+             size=16, color=INK_LITE)
     add_asterisk(s, Inches(11.6), Inches(0.5), 1.0, WHITE)
 
     # 三步驟
@@ -737,12 +717,12 @@ def slide_network():
     s = prs.slides.add_slide(blank_layout)
     add_gradient_bg(s)
     add_text(s, Inches(0.8), Inches(0.55), Inches(2), Inches(0.5),
-             "亮點 03", size=14, bold=True, color=RGBColor(0xE8, 0xE0, 0xFF))
+             "亮點 03", size=14, bold=True, color=INK_LITE)
     add_text(s, Inches(0.8), Inches(0.9), Inches(11), Inches(0.9),
              "誰一直在追誰跑？", size=40, bold=True, color=WHITE)
     add_text(s, Inches(0.8), Inches(1.7), Inches(11), Inches(0.5),
              "業務找設計 9 次，設計只回 1 次 — 這就是「卡」的訊號",
-             size=16, color=RGBColor(0xE8, 0xE0, 0xFF))
+             size=16, color=INK_LITE)
     add_asterisk(s, Inches(11.6), Inches(0.5), 1.0, WHITE)
 
     # 左：示意圖
@@ -812,7 +792,7 @@ def slide_tech():
              "Tech Stack", size=44, bold=True, color=WHITE)
     add_text(s, Inches(0.8), Inches(1.45), Inches(11), Inches(0.6),
              "前端即時 · 後端輕量 · 雲端託管",
-             size=18, color=RGBColor(0xE8, 0xE0, 0xFF))
+             size=18, color=INK_LITE)
     add_asterisk(s, Inches(11.6), Inches(0.5), 1.0, WHITE)
 
     layers = [
@@ -857,7 +837,7 @@ def slide_outcome():
              "預期效益", size=44, bold=True, color=WHITE)
     add_text(s, Inches(0.8), Inches(1.45), Inches(11), Inches(0.6),
              "從「主管直覺」到「數據共識」",
-             size=18, color=RGBColor(0xE8, 0xE0, 0xFF))
+             size=18, color=INK_LITE)
     add_asterisk(s, Inches(11.6), Inches(0.5), 1.0, WHITE)
 
     nums = [
@@ -896,7 +876,7 @@ def slide_limits():
              "已知限制", size=44, bold=True, color=WHITE)
     add_text(s, Inches(0.8), Inches(1.45), Inches(11), Inches(0.6),
              "我們知道哪裡還不夠好 — 答辯誠實版",
-             size=18, color=RGBColor(0xE8, 0xE0, 0xFF))
+             size=18, color=INK_LITE)
     add_asterisk(s, Inches(11.6), Inches(0.5), 1.0, WHITE)
 
     items = [
@@ -931,7 +911,7 @@ def slide_closing():
     s = prs.slides.add_slide(blank_layout)
     add_gradient_bg(s)
     add_asterisk(s, Inches(11.3), Inches(5.2), 1.4, WHITE)
-    add_asterisk(s, Inches(0.4), Inches(0.6), 0.7, RGBColor(0xE8, 0xE0, 0xFF))
+    add_asterisk(s, Inches(0.4), Inches(0.6), 0.7, INK_LITE)
 
     add_text(s, Inches(1.0), Inches(2.2), Inches(11), Inches(1.0),
              "工程現實 ≠ 學術理想",
@@ -940,7 +920,7 @@ def slide_closing():
              ("我們不假裝每個係數都來自論文，\n"
               "但每個係數都經過反推校準。\n\n"
               "比起完美的公式，我們更相信可以解釋的數字。"),
-             size=22, color=RGBColor(0xF0, 0xE8, 0xFF), line_spacing=1.6)
+             size=22, color=INK_LITE, line_spacing=1.6)
 
     add_pill(s, Inches(4.5), Inches(6.0), Inches(4.3), Inches(0.7),
              "Thank You · Q & A",
