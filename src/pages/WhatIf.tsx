@@ -58,11 +58,13 @@ export default function WhatIfPage({
   const deferredScenario = useDeferredValue(scenario);
   const isPending = scenario !== deferredScenario;
 
-  // 活躍卡點 (依風險排序)
+  // 活躍卡點 — 只列「高/極高風險」(P90+)，與首頁「本週優先改善」口徑一致
+  // 中/低風險不是真正的卡點，列上來只會讓清單變長、稀釋管理焦點
   const activeBlockers = useMemo(() => {
     return blockers
       .filter((b) => b.status !== "resolved")
       .map((b) => ({ blocker: b, ana: analyzeBlockerRecord(b, blockers, history) }))
+      .filter(({ ana }) => ana.level === "critical" || ana.level === "high")
       .sort((a, b) => (b.ana.percentile || 0) - (a.ana.percentile || 0));
   }, [blockers, history]);
 
@@ -310,7 +312,7 @@ export default function WhatIfPage({
               <div className="text-sm font-bold text-slate-900">解掉卡點</div>
               <div className="text-[11px] text-slate-500">點任一筆 → 標為已解決</div>
             </div>
-            <span className="text-[10px] text-slate-400">已解 {scenario.resolvedBlockerIds.size} / {activeBlockers.length}</span>
+            <span className="text-[10px] text-slate-400">已解 {scenario.resolvedBlockerIds.size} / {Math.min(activeBlockers.length, 8)}</span>
           </div>
           <div className="space-y-1.5 max-h-72 overflow-y-auto">
             {activeBlockers.slice(0, 8).map(({ blocker, ana }) => {
