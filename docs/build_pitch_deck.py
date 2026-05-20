@@ -673,39 +673,44 @@ def slide_whatif():
     add_text(s, Inches(0.8), Inches(0.9), Inches(11), Inches(0.9),
              "What-if 模擬器", size=40, bold=True, color=WHITE)
     add_text(s, Inches(0.8), Inches(1.7), Inches(11), Inches(0.5),
-             "不用真的改人事，先模擬看看",
+             "「如果我這樣調整，組織健康度會變怎樣？」 — 不用真的執行就能試",
              size=16, color=INK_LITE)
     add_asterisk(s, Inches(11.6), Inches(0.5), 1.0, WHITE)
 
-    # 三步驟
+    # 四種可調整的「假設」
     steps = [
-        ("拖員工到別組", "用滑鼠拖一拖就好"),
-        ("即時看分佈", "Gini 變了？誰過載？"),
-        ("系統給建議", "「把 X 移到 Y 組會更平均」"),
+        ("解卡點", "勾選哪些卡點\n「假設已解決」"),
+        ("加速決策", "勾選哪些逾期決策\n「假設立刻完成」"),
+        ("簽收交接", "勾選哪些交接\n「假設立刻簽收」"),
+        ("降低負載", "對特定員工\n拉滑桿減 0-80%"),
     ]
-    y = Inches(2.5)
+    card_w = Inches(2.9)
+    card_h = Inches(2.4)
+    gap = Inches(0.2)
+    total_w = card_w * 4 + gap * 3
+    start_x = (SLIDE_W - total_w) // 2
+    y = Inches(2.4)
     for i, (t, d) in enumerate(steps):
-        x = Inches(0.8 + i * 4.15)
-        add_card(s, x, y, Inches(3.9), Inches(2.4),
-                 bg_color=WHITE, corner=0.06)
-        add_text(s, x + Inches(0.3), y + Inches(0.3), Inches(3.3), Inches(0.6),
-                 f"Step {i+1}", size=14, bold=True, color=HILITE)
-        add_text(s, x + Inches(0.3), y + Inches(0.85), Inches(3.3), Inches(0.7),
-                 t, size=18, bold=True, color=DEEP, line_spacing=1.3)
-        add_text(s, x + Inches(0.3), y + Inches(1.7), Inches(3.3), Inches(0.6),
-                 d, size=12, color=SUBINK)
+        x = start_x + (card_w + gap) * i
+        add_card(s, x, y, card_w, card_h, bg_color=WHITE, corner=0.06)
+        add_text(s, x + Inches(0.3), y + Inches(0.3), card_w - Inches(0.6), Inches(0.5),
+                 f"0{i+1}", size=14, bold=True, color=HILITE)
+        add_text(s, x + Inches(0.3), y + Inches(0.75), card_w - Inches(0.6), Inches(0.6),
+                 t, size=22, bold=True, color=DEEP, line_spacing=1.3)
+        add_text(s, x + Inches(0.3), y + Inches(1.4), card_w - Inches(0.6), Inches(0.9),
+                 d, size=11.5, color=SUBINK, line_spacing=1.45)
 
-    # 底部數字
-    add_card(s, Inches(0.8), Inches(5.3), Inches(11.7), Inches(1.5),
+    # 底部：怎麼判斷結果
+    add_card(s, Inches(0.8), Inches(5.2), Inches(11.7), Inches(1.6),
              bg_color=WHITE, corner=0.1)
-    add_text(s, Inches(1.0), Inches(5.5), Inches(11.5), Inches(0.5),
-             "為什麼這樣設計？",
+    add_text(s, Inches(1.0), Inches(5.4), Inches(11.5), Inches(0.5),
+             "系統怎麼回答你「這樣改值不值得」",
              size=14, bold=True, color=HILITE)
-    add_text(s, Inches(1.0), Inches(5.95), Inches(11.5), Inches(1.0),
-             ("• 不用真的改人事 — 在「另一條時間線」試試看，反悔不要錢\n"
-              "• 拖到哪算到哪 — 拖曳當下就重算，不用等\n"
-              "• 系統會主動建議 — 「把蔡明遠移到投研，整體會更平均」"),
-             size=13, color=DEEP, line_spacing=1.5)
+    add_text(s, Inches(1.0), Inches(5.85), Inches(11.5), Inches(1.0),
+             ("• 即時雙雷達圖對比 — 現況 vs 模擬後（同一張圖兩種顏色疊圖）\n"
+              "• 健康度 Δ 一個數字 — Δ > 5「強烈建議」、0~5「微改善」、< -5「不建議」\n"
+              "• useDeferredValue 確保拖滑桿時不卡 UI（背景重算、前景流暢）"),
+             size=12.5, color=DEEP, line_spacing=1.55)
 
     add_footer(s, 10)
 
