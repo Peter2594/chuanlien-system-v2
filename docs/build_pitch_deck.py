@@ -544,51 +544,82 @@ def slide_calibration():
     add_text(s, Inches(0.8), Inches(0.55), Inches(2), Inches(0.5),
              "方法論", size=14, bold=True, color=INK_LITE)
     add_text(s, Inches(0.8), Inches(0.9), Inches(11), Inches(0.9),
-             "反推校準（Reverse Calibration）", size=36, bold=True, color=WHITE)
+             "人工權重的四層方法論", size=36, bold=True, color=WHITE)
     add_text(s, Inches(0.8), Inches(1.7), Inches(11), Inches(0.5),
-             "為什麼我們的人工參數不是憑空捏的", size=16, color=INK_LITE)
+             "16 個人工參數，每一層都有可審查的依據",
+             size=16, color=INK_LITE)
     add_asterisk(s, Inches(11.6), Inches(0.5), 1.0, WHITE)
 
-    steps = [
-        ("1", "先猜一個", "看書、抄業界，\n憑直覺給數字"),
-        ("2", "拿資料跑", "用 17 員工模擬資料\n跑出結果"),
-        ("3", "對答案", "問主管：「這個結果\n跟你直覺一不一樣？」"),
-        ("4", "改數字", "不一樣就回去調，\n直到對得上"),
-        ("5", "穩了", "改到主管說\n「對，就是這樣」"),
+    # 四層卡片
+    layers = [
+        ("①", "排序方向",
+         "哪個權重該大",
+         "業界文獻\n(Grove / Edmondson / OHI)",
+         "回答：為什麼 A 比 B 大"),
+        ("②", "等價尺度",
+         "比例該多懸殊",
+         "等價關係\n(2 個交接 ≈ 1 個卡點)",
+         "回答：為什麼是 1.5 不是 1.3"),
+        ("③", "測資校準",
+         "整體幅度多大",
+         "SEED 錨點測試\n(典型過載 ≥ 12 分)",
+         "回答：為什麼過載門檻是 12"),
+        ("④", "敏感度驗證",
+         "權重錯了會怎樣",
+         "±20% 擾動 × 500 次\nTop-3 穩定 93.4%",
+         "回答：萬一數字錯系統會崩嗎"),
     ]
-    card_w = Inches(2.35)
+    card_w = Inches(2.95)
     card_h = Inches(4.0)
     gap = Inches(0.15)
-    total_w = card_w * 5 + gap * 4
+    total_w = card_w * 4 + gap * 3
     start_x = (SLIDE_W - total_w) // 2
-    y = Inches(2.5)
+    y = Inches(2.45)
 
-    for i, (n, t, d) in enumerate(steps):
+    for i, (num, title, sub, body, qa) in enumerate(layers):
         x = start_x + (card_w + gap) * i
-        add_card(s, x, y, card_w, card_h, bg_color=WHITE, corner=0.08)
-        # 大號碼
-        add_text(s, x, y + Inches(0.4), card_w, Inches(1.0),
-                 n, size=60, bold=True, color=HILITE, align=PP_ALIGN.CENTER)
+        add_card(s, x, y, card_w, card_h, bg_color=WHITE, corner=0.06)
+        # 編號
+        add_text(s, x + Inches(0.3), y + Inches(0.3), Inches(0.8), Inches(0.7),
+                 num, size=36, bold=True, color=HILITE)
         # 標題
-        add_text(s, x, y + Inches(1.7), card_w, Inches(0.6),
-                 t, size=20, bold=True, color=DEEP, align=PP_ALIGN.CENTER)
-        # 描述
-        add_text(s, x + Inches(0.2), y + Inches(2.5), card_w - Inches(0.4), Inches(1.5),
-                 d, size=12, color=SUBINK, align=PP_ALIGN.CENTER, line_spacing=1.4)
+        add_text(s, x + Inches(0.3), y + Inches(1.0), card_w - Inches(0.6), Inches(0.5),
+                 title, size=20, bold=True, color=DEEP)
+        # 副標
+        add_text(s, x + Inches(0.3), y + Inches(1.55), card_w - Inches(0.6), Inches(0.4),
+                 sub, size=11, color=INK_LITE)
+        # 細線分隔
+        ln = s.shapes.add_connector(1,
+            x + Inches(0.3), y + Inches(2.1),
+            x + card_w - Inches(0.3), y + Inches(2.1))
+        ln.line.color.rgb = HAIRLINE
+        ln.line.width = Pt(0.75)
+        # 量化方法 / 依據
+        add_text(s, x + Inches(0.3), y + Inches(2.25), card_w - Inches(0.6), Inches(1.1),
+                 body, size=12, bold=True, color=DEEP, line_spacing=1.4)
+        # Q&A 對應
+        add_text(s, x + Inches(0.3), y + Inches(3.35), card_w - Inches(0.6), Inches(0.55),
+                 qa, size=10, color=INK_LITE, line_spacing=1.3)
 
-        # 箭頭
-        if i < 4:
-            chev = s.shapes.add_shape(MSO_SHAPE.RIGHT_ARROW,
-                                       x + card_w + Inches(0.0),
-                                       y + Inches(1.85), gap, Inches(0.3))
-            chev.line.fill.background()
-            chev.fill.solid()
-            chev.fill.fore_color.rgb = WHITE
-
-    # 底部口號
-    add_pill(s, Inches(2.5), Inches(6.6), Inches(8.3), Inches(0.45),
-             "「9 個係數不是 9 個獨立決定，是 1 個學理依據的離散採樣」",
-             bg_color=SOFT_BG, text_color=DEEP, size=14)
+    # 底部量化總結
+    bottom_y = Inches(6.55)
+    add_text(s, Inches(0.8), bottom_y, Inches(12), Inches(0.4),
+             "量化證據總表",
+             size=11, bold=True, color=HILITE)
+    summary = [
+        ("16 個",   "人工權重"),
+        ("4 層",    "可審查依據"),
+        ("500 次",  "敏感度擾動"),
+        ("93.4%",   "Top-3 排名穩定"),
+        ("0.995",   "Spearman ρ"),
+    ]
+    sw = Inches(2.4)
+    for i, (val, label) in enumerate(summary):
+        x = Inches(0.8) + sw * i
+        add_text(s, x, bottom_y + Inches(0.35), sw, Inches(0.35),
+                 val, size=18, bold=True, color=DEEP)
+        add_text(s, x, bottom_y + Inches(0.7), sw, Inches(0.25),
+                 label, size=9, color=INK_LITE)
 
     add_footer(s, 8)
 
