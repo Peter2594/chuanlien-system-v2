@@ -231,10 +231,10 @@ story.append(algo_card(
 story.append(algo_card(
     8, "Gini Coefficient（不平均度，經濟學標準）", "統計 · 核心",
     "Gini = Σᵢ (2i − n − 1) × score[i]  /  (n × Σ score[i])<br/>"
-    "0 = 完全公平，1 = 極端不平均，0.35 為學術分界",
+    "0 = 完全平均，1 = 極端不平均，0.35 作為管理警示門檻",
     "src/lib/algorithms.ts (computeORI), src/lib/orgHealth.ts (loadBalance)",
-    "經濟學量化「分配不均」的標準。組織內若 Gini > 0.35 表示工作量分布不公平，"
-    "扣分；< 0.35 時不扣（公平範圍內）。比「標準差」更直觀。",
+    "經濟學量化「分配不均」的標準。套用到工作負載時不把它視為公平裁判，"
+    "而是離散程度監測器：Gini > 0.35 代表主管應查看負載熱力圖；< 0.35 時不扣分。",
     GREEN,
 ))
 

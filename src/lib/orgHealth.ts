@@ -7,7 +7,7 @@
  *   - 卡點健康 (Blocker Health):    P95+ 卡點越少 + 平均 percentile 越低 = 越健康
  *   - 決策及時 (Decision Timeliness): 逾期決策少 + 已完成決策快 = 越健康
  *   - 交接流暢 (Handoff Smoothness): 待簽收逾時少 + 完成率高 = 越健康
- *   - 負載均衡 (Load Balance):      Gini < 0.35、top1 < 20% = 越健康
+ *   - 負載均衡 (Load Balance):      Gini 超過 0.35 視為管理警示，需搭配過載人數判讀
  *   - 部門協作 (Cross-Dept):        雙向 mention 對稱 = 越健康
  *   - 週報品質 (Report Quality):    本週繳交率 + 平均字數 + 含卡點/協助比例 = 越健康
  */
@@ -97,8 +97,8 @@ export function computeHealthSnapshot(
   }
 
   // ===== 4. 負載均衡 =====
-  // analyzeEmployeeLoad 接 asOf 參數，依該時點計算時間衰減，
-  // 各週快照能反映當週的真實負載分布
+  // analyzeEmployeeLoad 接 asOf 參數，依該時點計算時間衰減。
+  // Gini 在這裡只作為「負載離散程度」警示，不代表工作量必須絕對平均。
   let loadBalance = 100;
   const loads = analyzeEmployeeLoad(reports, activeHandoffs, employees, asOf);
   if (loads.length > 0) {

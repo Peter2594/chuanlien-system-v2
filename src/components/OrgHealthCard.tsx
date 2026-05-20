@@ -148,7 +148,7 @@ const AXIS_LABELS = [
   { key: "blockerHealth",      short: "卡點健康", desc: "P95+ 卡點越少越健康" },
   { key: "decisionTimeliness", short: "決策及時", desc: "逾期決策越少越健康" },
   { key: "handoffSmoothness",  short: "交接流暢", desc: "待簽收逾時越少越健康" },
-  { key: "loadBalance",        short: "負載均衡", desc: "Gini < 0.35 為健康" },
+  { key: "loadBalance",        short: "負載均衡", desc: "Gini > 0.35 觸發管理警示" },
   { key: "crossDept",          short: "部門協作", desc: "雙向溝通對稱為健康" },
   { key: "reportQuality",      short: "週報品質", desc: "繳交率+內容深度" },
 ];

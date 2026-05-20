@@ -1,7 +1,7 @@
 /**
  * What-if 決策模擬器
  *
- * 互動式調整 (解卡點、加員工、加速決策、轉派案件)，
+ * 互動式調整 (解卡點、加速決策、簽收交接、降低負載)，
  * 即時試算對組織健康度的影響。
  */
 import { useState, useMemo, useDeferredValue } from "react";
@@ -15,7 +15,7 @@ import { Card } from "../components/ui/Card";
 import { cn } from "../lib/utils";
 import { NOW } from "../lib/dateUtils";
 import { computeHealthSnapshot, healthLevel } from "../lib/orgHealth";
-import { analyzeBlockerRecord, isDecisionOverdueAt, daysOverdue } from "../lib/algorithms";
+import { analyzeBlockerRecord, analyzeEmployeeLoad, isDecisionOverdueAt, daysOverdue } from "../lib/algorithms";
 import type { Report, Handoff, Decision, Blocker, Employee, Department, HistoryCase } from "../lib/types";
 
 interface Props {
@@ -32,7 +32,7 @@ interface Scenario {
   resolvedBlockerIds: Set<string>;
   expeditedDecisionIds: Set<string>;     // 立即標為已完成
   signedHandoffIds: Set<string>;          // 立即簽收
-  extraHeadcount: Record<string, number>; // dept → +N 人
+  loadRelief: Record<string, number>;      // employee name → 降低負載百分比
 }
 
 const DIMS = [
@@ -51,7 +51,7 @@ export default function WhatIfPage({
     resolvedBlockerIds: new Set(),
     expeditedDecisionIds: new Set(),
     signedHandoffIds: new Set(),
-    extraHeadcount: {},
+    loadRelief: {},
   });
   // 用 useDeferredValue 延遲重算 computeHealthSnapshot
   // 連續快速點選時不會卡 UI（React 自動 batch + 降優先級）
@@ -77,7 +77,10 @@ export default function WhatIfPage({
       .sort((a, b) => (b.hoursOverdue || 0) - (a.hoursOverdue || 0)),
   [handoffs]);
 
-  const activeDeptList = departments.filter((d) => d.active && d.name !== "營運與管理層").map((d) => d.name);
+  const currentLoads = useMemo(
+    () => analyzeEmployeeLoad(reports, handoffs, employees, NOW),
+    [reports, handoffs, employees],
+  );
 
   // 套用 scenario 後的模擬資料 — 使用 deferredScenario 讓 React 自動延遲重算
   const simulated = useMemo(() => {
@@ -93,18 +96,8 @@ export default function WhatIfPage({
     const newHandoffs = handoffs.map((h) =>
       deferredScenario.signedHandoffIds.has(h.id) ? { ...h, status: "已簽收" as const, hoursOverdue: undefined } : h,
     );
-    const newEmployees: Employee[] = [...employees];
-    (Object.entries(deferredScenario.extraHeadcount) as [string, number][]).forEach(([dept, n]) => {
-      for (let i = 0; i < n; i++) {
-        newEmployees.push({
-          name: `（模擬）${dept}新人 ${i + 1}`,
-          dept,
-          role: "支援人力",
-        });
-      }
-    });
-    return { newBlockers, newDecisions, newHandoffs, newEmployees };
-  }, [deferredScenario, blockers, decisions, handoffs, employees]);
+    return { newBlockers, newDecisions, newHandoffs };
+  }, [deferredScenario, blockers, decisions, handoffs]);
 
   // 基準健康度（現況）
   const baseline = useMemo(() =>
@@ -112,18 +105,39 @@ export default function WhatIfPage({
   [reports, handoffs, decisions, blockers, employees, departments, history]);
 
   // 模擬後健康度
-  const projected = useMemo(() =>
+  const projectedBase = useMemo(() =>
     computeHealthSnapshot(
       NOW,
       reports,
       simulated.newHandoffs,
       simulated.newDecisions,
       simulated.newBlockers,
-      simulated.newEmployees,
+      employees,
       departments,
       history,
     ),
-  [reports, simulated, departments, history]);
+  [reports, simulated, employees, departments, history]);
+
+  const projected = useMemo(() => {
+    const adjustedLoads = analyzeEmployeeLoad(reports, simulated.newHandoffs, employees, NOW)
+      .map((l) => {
+        const relief = Math.max(0, Math.min(80, deferredScenario.loadRelief[l.name] || 0));
+        return { ...l, loadScore: +(l.loadScore * (1 - relief / 100)).toFixed(2) };
+      });
+
+    if (!adjustedLoads.length) return projectedBase;
+
+    const scores = adjustedLoads.map((l) => l.loadScore).sort((a, b) => a - b);
+    const total = scores.reduce((s, v) => s + v, 0);
+    const gini = total > 0
+      ? scores.reduce((s, v, i) => s + (2 * (i + 1) - scores.length - 1) * v, 0) / (scores.length * total)
+      : 0;
+    const overload = adjustedLoads.filter((l) => l.loadScore >= 25).length;
+    const loadBalance = Math.max(0, Math.min(100, 100 - Math.max(0, gini - 0.35) * 200 - overload * 8));
+    const overall = +(projectedBase.overall + (loadBalance - projectedBase.loadBalance) * 0.18).toFixed(1);
+
+    return { ...projectedBase, loadBalance: +loadBalance.toFixed(1), overall };
+  }, [deferredScenario, employees, reports, simulated, projectedBase]);
 
   const delta = +(projected.overall - baseline.overall).toFixed(1);
   const baseLevel = healthLevel(baseline.overall);
@@ -140,13 +154,13 @@ export default function WhatIfPage({
     scenario.resolvedBlockerIds.size +
     scenario.expeditedDecisionIds.size +
     scenario.signedHandoffIds.size +
-    (Object.values(scenario.extraHeadcount) as number[]).reduce((s, v) => s + v, 0);
+    Object.values(scenario.loadRelief).filter((v) => v > 0).length;
 
   const reset = () => setScenario({
     resolvedBlockerIds: new Set(),
     expeditedDecisionIds: new Set(),
     signedHandoffIds: new Set(),
-    extraHeadcount: {},
+    loadRelief: {},
   });
 
   const toggleBlocker = (id: string) => {
@@ -167,10 +181,14 @@ export default function WhatIfPage({
     else next.add(id);
     setScenario({ ...scenario, signedHandoffIds: next });
   };
-  const updateHeadcount = (dept: string, n: number) => {
+  const updateLoadRelief = (name: string, pct: number) => {
+    const next = { ...scenario.loadRelief };
+    const value = Math.max(0, Math.min(80, pct));
+    if (value === 0) delete next[name];
+    else next[name] = value;
     setScenario({
       ...scenario,
-      extraHeadcount: { ...scenario.extraHeadcount, [dept]: Math.max(0, n) },
+      loadRelief: next,
     });
   };
 
@@ -381,42 +399,47 @@ export default function WhatIfPage({
           </div>
         </Card>
 
-        {/* 增加員工 */}
+        {/* 降低負載 */}
         <Card className="p-5 rounded-2xl">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <div className="text-sm font-bold text-slate-900">增加部門人力</div>
-              <div className="text-[11px] text-slate-500">為各部門模擬增加支援人力</div>
+              <div className="text-sm font-bold text-slate-900">降低高負載員工工作量</div>
+              <div className="text-[11px] text-slate-500">模擬把案件/卡點轉出，並用同一批員工重算 Gini</div>
             </div>
             <span className="text-[10px] text-slate-400">
-              共加 {(Object.values(scenario.extraHeadcount) as number[]).reduce((s, v) => s + v, 0)} 人
+              已調整 {Object.values(scenario.loadRelief).filter((v) => v > 0).length} 人
             </span>
           </div>
           <div className="space-y-3">
-            {activeDeptList.map((dept) => {
-              const n = scenario.extraHeadcount[dept] || 0;
+            {currentLoads.slice(0, 6).map((load) => {
+              const pct = scenario.loadRelief[load.name] || 0;
               return (
-                <div key={dept} className="flex items-center gap-3">
-                  <div className="flex-1 text-sm font-medium text-slate-700">{dept}</div>
+                <div key={load.name} className="flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-slate-700 truncate">{load.name}</div>
+                    <div className="text-[10px] text-slate-400 truncate">
+                      {load.dept} · 負載 {load.loadScore.toFixed(1)} · P{load.percentile}
+                    </div>
+                  </div>
                   <div className="flex items-center gap-1">
                     <button
-                      onClick={() => updateHeadcount(dept, n - 1)}
-                      disabled={n === 0}
+                      onClick={() => updateLoadRelief(load.name, pct - 10)}
+                      disabled={pct === 0}
                       className={cn(
                         "w-7 h-7 rounded-lg font-bold transition",
-                        n === 0 ? "bg-slate-100 text-slate-300 cursor-not-allowed"
+                        pct === 0 ? "bg-slate-100 text-slate-300 cursor-not-allowed"
                         : "bg-slate-100 text-slate-700 hover:bg-slate-200",
                       )}
                     >−</button>
-                    <span className="w-10 text-center text-base font-bold text-slate-900">
-                      +{n}
+                    <span className="w-12 text-center text-sm font-bold text-slate-900">
+                      {pct}%
                     </span>
                     <button
-                      onClick={() => updateHeadcount(dept, n + 1)}
-                      disabled={n >= 5}
+                      onClick={() => updateLoadRelief(load.name, pct + 10)}
+                      disabled={pct >= 80}
                       className={cn(
                         "w-7 h-7 rounded-lg font-bold transition",
-                        n >= 5 ? "bg-slate-100 text-slate-300 cursor-not-allowed"
+                        pct >= 80 ? "bg-slate-100 text-slate-300 cursor-not-allowed"
                         : "bg-violet-100 text-violet-700 hover:bg-violet-200",
                       )}
                     >+</button>
@@ -425,7 +448,7 @@ export default function WhatIfPage({
               );
             })}
             <div className="text-[10px] text-slate-400 italic mt-2 pt-3 border-t border-slate-100">
-              ※ 模擬人力會在「負載均衡」維度產生影響：分母變大 → 過載比例下降
+              ※ 這裡代表把該員工部分工作量轉出或降低，不新增 0 負載員工；若 Gini 下降，負載均衡分數才會上升。
             </div>
           </div>
         </Card>
