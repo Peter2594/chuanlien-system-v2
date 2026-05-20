@@ -135,7 +135,7 @@ def add_card(slide, x, y, w, h, *, bg_color=None, corner=0.04, alpha=False):
     return shp
 
 
-def add_footer(slide, page_num, total=15):
+def add_footer(slide, page_num, total=16):
     add_text(slide, Inches(0.8), Inches(7.15), Inches(6), Inches(0.3),
              "串連系統 v2.2 · 資管導論 第 13 組",
              size=9, color=INK_LITE)
@@ -783,7 +783,123 @@ def slide_network():
 
 
 # ===========================================================
-# Slide 12 — 技術架構
+# Slide 12 — 競品分析
+# ===========================================================
+def slide_competitive():
+    s = prs.slides.add_slide(blank_layout)
+    add_gradient_bg(s)
+    add_text(s, Inches(0.8), Inches(0.6), Inches(10), Inches(0.8),
+             "為什麼不用 Asana / Notion / Viva？", size=36, bold=True, color=WHITE)
+    add_text(s, Inches(0.8), Inches(1.35), Inches(12), Inches(0.5),
+             "現成工具解任務、卻不解「決策」。",
+             size=15, color=INK_LITE)
+
+    # ========== 對比矩陣 ==========
+    # 欄位設計：功能名稱 + 6 個產品
+    headers = ["", "串連系統", "Notion", "Asana", "15Five", "MS Viva", "現狀\n(Excel+Line)"]
+    rows = [
+        ("員工負載量化",       "✓",  "✗", "△", "△", "✓", "✗"),
+        ("跨部門卡點偵測",     "✓",  "✗", "△", "✗", "△", "✗"),
+        ("決策事後追蹤",       "✓",  "✗", "✗", "✗", "△", "✗"),
+        ("組織健康度雷達",     "✓",  "✗", "✗", "△", "✓", "✗"),
+        ("不對稱互動偵測",     "✓",  "✗", "✗", "✗", "✗", "✗"),
+        ("導入成本",           "免費", "$",  "$$", "$$$","$$$","免費"),
+        ("學習曲線",           "低",  "高", "中", "低", "高", "低"),
+    ]
+
+    # 表格尺寸
+    table_x = Inches(0.8)
+    table_y = Inches(2.1)
+    col_widths = [Inches(2.0), Inches(1.5), Inches(1.4), Inches(1.4), Inches(1.4), Inches(1.4), Inches(1.6)]
+    row_h = Inches(0.55)
+
+    # 找出「串連系統」欄的 x 起點，畫一個深色背景條表示自家
+    self_col_x = table_x + col_widths[0]
+    self_col_w = col_widths[1]
+    self_bg = s.shapes.add_shape(MSO_SHAPE.RECTANGLE,
+                                  self_col_x, table_y,
+                                  self_col_w, row_h * (len(rows) + 1) + Inches(0.05))
+    self_bg.line.fill.background()
+    self_bg.fill.solid()
+    self_bg.fill.fore_color.rgb = INK_DARK
+    spTree = self_bg._element.getparent()
+    spTree.remove(self_bg._element)
+    spTree.insert(2, self_bg._element)  # 送到底層
+
+    # 標題列
+    x_acc = table_x
+    for ci, h in enumerate(headers):
+        is_self = (ci == 1)
+        col = WHITE if is_self else INK_DARK
+        # 文字
+        add_text(s, x_acc, table_y, col_widths[ci], row_h,
+                 h, size=12, bold=True, color=(BG if is_self else INK_DARK),
+                 align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, line_spacing=1.1)
+        x_acc += col_widths[ci]
+    # 標題下分隔線
+    hl = s.shapes.add_shape(MSO_SHAPE.RECTANGLE,
+                             table_x, table_y + row_h,
+                             sum(col_widths, Emu(0)), Emu(12700))
+    hl.line.fill.background()
+    hl.fill.solid()
+    hl.fill.fore_color.rgb = INK_DARK
+
+    # 內容列
+    for ri, row in enumerate(rows):
+        y = table_y + row_h * (ri + 1) + Inches(0.05)
+        x_acc = table_x
+        for ci, val in enumerate(row):
+            is_self = (ci == 1)
+            # 顏色邏輯
+            if val == "✓":
+                color = BG if is_self else COOL
+                weight = True
+                size = 18
+            elif val == "△":
+                color = INK_LITE
+                weight = False
+                size = 16
+            elif val == "✗":
+                color = INK_LITE
+                weight = False
+                size = 16
+            elif ci == 0:
+                color = INK_DARK
+                weight = True
+                size = 12
+            else:
+                color = BG if is_self else INK_DARK
+                weight = (val in ("免費", "低"))
+                size = 11
+            add_text(s, x_acc, y, col_widths[ci], row_h,
+                     val, size=size, bold=weight, color=color,
+                     align=(PP_ALIGN.LEFT if ci == 0 else PP_ALIGN.CENTER),
+                     anchor=MSO_ANCHOR.MIDDLE)
+            x_acc += col_widths[ci]
+        # 行間 hairline
+        if ri < len(rows) - 1:
+            ln = s.shapes.add_shape(MSO_SHAPE.RECTANGLE,
+                                     table_x, y + row_h,
+                                     sum(col_widths, Emu(0)), Emu(6350))
+            ln.line.fill.background()
+            ln.fill.solid()
+            ln.fill.fore_color.rgb = HAIRLINE
+
+    # 圖例
+    legend_y = Inches(6.4)
+    add_text(s, Inches(0.8), legend_y, Inches(3), Inches(0.3),
+             "✓ 完整支援　△ 部分支援　✗ 不支援",
+             size=10, color=INK_LITE)
+    # 結論
+    add_text(s, Inches(5.5), legend_y, Inches(7), Inches(0.3),
+             "差異化：決策閉環 + 跨部門卡點 + 反推校準三項，市面無同類產品。",
+             size=11, bold=True, color=INK_DARK, align=PP_ALIGN.RIGHT)
+
+    add_footer(s, 12)
+
+
+# ===========================================================
+# Slide 13 — 技術架構
 # ===========================================================
 def slide_tech():
     s = prs.slides.add_slide(blank_layout)
@@ -824,11 +940,11 @@ def slide_tech():
         add_text(s, x + Inches(0.3), y + Inches(1.75), card_w - Inches(0.6), Inches(2.4),
                  body, size=12, color=DEEP, line_spacing=1.5)
 
-    add_footer(s, 12)
+    add_footer(s, 13)
 
 
 # ===========================================================
-# Slide 13 — 預期效益
+# Slide 14 — 預期效益
 # ===========================================================
 def slide_outcome():
     s = prs.slides.add_slide(blank_layout)
@@ -863,11 +979,11 @@ def slide_outcome():
         add_text(s, x + Inches(0.3), y + Inches(2.9), card_w - Inches(0.6), Inches(1.2),
                  d, size=12, color=SUBINK, align=PP_ALIGN.CENTER, line_spacing=1.4)
 
-    add_footer(s, 13)
+    add_footer(s, 14)
 
 
 # ===========================================================
-# Slide 14 — 已知限制（誠實揭露）
+# Slide 15 — 已知限制（誠實揭露）
 # ===========================================================
 def slide_limits():
     s = prs.slides.add_slide(blank_layout)
@@ -901,11 +1017,11 @@ def slide_limits():
         add_text(s, Inches(1.8), yy + Inches(0.5), Inches(10), Inches(0.4),
                  d, size=12, color=SUBINK)
 
-    add_footer(s, 14)
+    add_footer(s, 15)
 
 
 # ===========================================================
-# Slide 15 — 結語
+# Slide 16 — 結語
 # ===========================================================
 def slide_closing():
     s = prs.slides.add_slide(blank_layout)
@@ -941,6 +1057,7 @@ slide_calibration()
 slide_bm25f()
 slide_whatif()
 slide_network()
+slide_competitive()
 slide_tech()
 slide_outcome()
 slide_limits()
