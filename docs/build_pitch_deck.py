@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""串連系統 v2.2 — 簡報產生器（藍紫漸層風）"""
+"""串連系統 v2.2 — 簡報產生器（日經編輯風：米底 + 深藍 + 朱紅）"""
 import sys
 from pptx import Presentation
 from pptx.util import Inches, Pt, Emu
@@ -12,16 +12,26 @@ from lxml import etree
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
-# ============ 配色 ============
-BLUE      = RGBColor(0x4B, 0x6F, 0xE0)
-PURPLE    = RGBColor(0x8B, 0x6F, 0xE8)
-PINK      = RGBColor(0xF2, 0xB8, 0xD8)
-DEEP      = RGBColor(0x2A, 0x2A, 0x6E)  # 深紫
-WHITE     = RGBColor(0xFF, 0xFF, 0xFF)
-INK       = RGBColor(0x1A, 0x1F, 0x4A)  # 文字深色
-SUBINK    = RGBColor(0x5A, 0x5F, 0x8A)
-HILITE    = RGBColor(0xB8, 0xA8, 0xFF)  # 強調紫
-CORAL     = RGBColor(0xFF, 0x8C, 0x8C)
+# ============ 配色（編輯雜誌風）============
+CREAM     = RGBColor(0xF5, 0xF0, 0xE5)  # 米色底
+NAVY      = RGBColor(0x1B, 0x2A, 0x4E)  # 深藍主色
+VERMIL    = RGBColor(0xC1, 0x3C, 0x2E)  # 朱紅
+GOLD      = RGBColor(0xB8, 0x92, 0x3C)  # 金色
+INK_BLACK = RGBColor(0x1A, 0x1A, 0x1A)  # 內文黑
+PAPER     = RGBColor(0xFA, 0xF6, 0xEC)  # 紙白（卡片）
+GREY      = RGBColor(0x6B, 0x66, 0x5C)  # 灰色註解
+LINE      = RGBColor(0x9C, 0x95, 0x85)  # 細線
+SOFT_RED  = RGBColor(0xF2, 0xDC, 0xD3)  # 朱紅淡底
+SOFT_GRN  = RGBColor(0xDC, 0xE3, 0xD0)  # 葉綠淡底
+
+# 對外別名（標題原本印在深色底用 WHITE，現在改印 NAVY 於米底）
+WHITE  = NAVY      # 原本「印在深色背景的白色標題」 → 改成深藍
+DEEP   = NAVY
+INK    = NAVY
+SUBINK = GREY
+HILITE = VERMIL
+CORAL  = VERMIL
+SUBTITLE_WHITE = GREY  # 副標原本淡白，現在改成灰
 
 CN = "Microsoft JhengHei"  # Windows 內建繁中字型
 
@@ -36,40 +46,27 @@ blank_layout = prs.slide_layouts[6]
 
 
 def add_gradient_bg(slide):
-    """背景：藍 → 紫 → 粉橘 對角漸層"""
+    """背景：米色實底 + 上方深藍細線 + 角落金色裝飾"""
     bg = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, SLIDE_W, SLIDE_H)
     bg.line.fill.background()
-    # 使用 XML 直接寫 gradient fill
-    sp = bg.fill._xPr
-    # 找到 spPr
-    spPr = bg.fill._xPr
-    # remove default solidFill
-    for el in spPr.findall(qn('a:solidFill')):
-        spPr.remove(el)
-    for el in spPr.findall(qn('a:gradFill')):
-        spPr.remove(el)
-    grad_xml = """
-    <a:gradFill rotWithShape="1" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
-      <a:gsLst>
-        <a:gs pos="0"><a:srgbClr val="4B6FE0"/></a:gs>
-        <a:gs pos="45000"><a:srgbClr val="8B6FE8"/></a:gs>
-        <a:gs pos="80000"><a:srgbClr val="D9B8E8"/></a:gs>
-        <a:gs pos="100000"><a:srgbClr val="F2B8D8"/></a:gs>
-      </a:gsLst>
-      <a:lin ang="2700000" scaled="0"/>
-    </a:gradFill>
-    """
-    grad_el = etree.fromstring(grad_xml)
-    # insert before ln
-    ln = spPr.find(qn('a:ln'))
-    if ln is not None:
-        ln.addprevious(grad_el)
-    else:
-        spPr.append(grad_el)
-    # send to back
+    bg.fill.solid()
+    bg.fill.fore_color.rgb = CREAM
     spTree = bg._element.getparent()
     spTree.remove(bg._element)
     spTree.insert(2, bg._element)
+
+    # 頂部細裝飾：深藍色帶 + 朱紅短線
+    top = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, SLIDE_W, Inches(0.18))
+    top.line.fill.background()
+    top.fill.solid()
+    top.fill.fore_color.rgb = NAVY
+
+    accent = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE,
+                                     Inches(0), 0, Inches(2.0), Inches(0.18))
+    accent.line.fill.background()
+    accent.fill.solid()
+    accent.fill.fore_color.rgb = VERMIL
+
     return bg
 
 

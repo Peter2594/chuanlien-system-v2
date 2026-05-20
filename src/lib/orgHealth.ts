@@ -7,7 +7,7 @@
  *   - 卡點健康 (Blocker Health):    P95+ 卡點越少 + 平均 percentile 越低 = 越健康
  *   - 決策及時 (Decision Timeliness): 逾期決策少 + 已完成決策快 = 越健康
  *   - 交接流暢 (Handoff Smoothness): 待簽收逾時少 + 完成率高 = 越健康
- *   - 負載均衡 (Load Balance):      Gini 超過 0.35 視為管理警示，需搭配過載人數判讀
+ *   - 負載均衡 (Load Balance):      Gini、過載人數、Top1 占比、P90/P50 複合警示
  *   - 部門協作 (Cross-Dept):        雙向 mention 對稱 = 越健康
  *   - 週報品質 (Report Quality):    本週繳交率 + 平均字數 + 含卡點/協助比例 = 越健康
  */
@@ -28,6 +28,61 @@ export interface HealthSnapshot {
 }
 
 const clamp = (v: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v));
+
+interface LoadScoreLike {
+  loadScore: number;
+}
+
+export interface LoadBalanceBreakdown {
+  score: number;
+  gini: number;
+  overloadCount: number;
+  top1Share: number;
+  p90p50Ratio: number;
+}
+
+function percentile(sorted: number[], p: number): number {
+  if (!sorted.length) return 0;
+  const idx = (sorted.length - 1) * (p / 100);
+  const lo = Math.floor(idx);
+  const hi = Math.ceil(idx);
+  if (lo === hi) return sorted[lo];
+  return sorted[lo] * (hi - idx) + sorted[hi] * (idx - lo);
+}
+
+export function computeLoadBalanceScore(loads: LoadScoreLike[]): LoadBalanceBreakdown {
+  if (!loads.length) {
+    return { score: 100, gini: 0, overloadCount: 0, top1Share: 0, p90p50Ratio: 1 };
+  }
+
+  const scores = loads.map((l) => Math.max(0, l.loadScore)).sort((a, b) => a - b);
+  const total = scores.reduce((s, v) => s + v, 0);
+  if (total <= 0) {
+    return { score: 100, gini: 0, overloadCount: 0, top1Share: 0, p90p50Ratio: 1 };
+  }
+
+  const n = scores.length;
+  const gini = scores.reduce((s, v, i) => s + (2 * (i + 1) - n - 1) * v, 0) / (n * total);
+  const overloadCount = loads.filter((l) => l.loadScore >= 25).length;
+  const top1Share = scores[n - 1] / total;
+  const p50 = percentile(scores, 50);
+  const p90 = percentile(scores, 90);
+  const p90p50Ratio = p50 > 0 ? p90 / p50 : p90 > 0 ? 3 : 1;
+
+  const giniPenalty = Math.max(0, gini - 0.35) * 120;
+  const overloadPenalty = overloadCount * 8;
+  const topSharePenalty = Math.max(0, top1Share - 0.25) * 80;
+  const p90p50Penalty = Math.max(0, p90p50Ratio - 2) * 8;
+  const score = clamp(100 - giniPenalty - overloadPenalty - topSharePenalty - p90p50Penalty);
+
+  return {
+    score: +score.toFixed(1),
+    gini: +gini.toFixed(3),
+    overloadCount,
+    top1Share: +top1Share.toFixed(3),
+    p90p50Ratio: +p90p50Ratio.toFixed(2),
+  };
+}
 
 export function computeHealthSnapshot(
   asOf: Date,
@@ -98,19 +153,13 @@ export function computeHealthSnapshot(
 
   // ===== 4. 負載均衡 =====
   // analyzeEmployeeLoad 接 asOf 參數，依該時點計算時間衰減。
-  // Gini 在這裡只作為「負載離散程度」警示，不代表工作量必須絕對平均。
+  // Gini 只作為離散程度警示之一，需搭配過載人數、Top1 占比與 P90/P50 判讀。
   let loadBalance = 100;
   const loads = analyzeEmployeeLoad(reports, activeHandoffs, employees, asOf);
   if (loads.length > 0) {
-    const scores = loads.map((l) => l.loadScore).sort((a, b) => a - b);
-    const total = scores.reduce((s, v) => s + v, 0) || 1;
-    let gini = 0;
-    const n = scores.length;
-    for (let i = 0; i < n; i++) gini += (2 * (i + 1) - n - 1) * scores[i];
-    gini = gini / (n * total);
-    const overload = loads.filter((l) => l.level === "overload").length;
-    loadBalance = clamp(100 - Math.max(0, gini - 0.35) * 200 - overload * 8);
-    if (overload > 0) events.push(`${overload} 位員工過載`);
+    const loadBalanceStats = computeLoadBalanceScore(loads);
+    loadBalance = loadBalanceStats.score;
+    if (loadBalanceStats.overloadCount > 0) events.push(`${loadBalanceStats.overloadCount} 位員工過載`);
   }
 
   // ===== 5. 部門協作 =====

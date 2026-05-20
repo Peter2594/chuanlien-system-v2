@@ -602,7 +602,7 @@ story.append(kv_table([
     ("卡點健康 (22%)",  "100 − P95數 × 15 − P90數 × 7 − max(0, avgPercentile − 50) × 0.8"),
     ("決策及時 (18%)",  "100 − max(0, avgCompletionDays − 14) × 3 − overdueCount × 10"),
     ("交接流暢 (15%)",  "50 + completionRate × 50 − overdueHandoffs × 8"),
-    ("負載均衡 (18%)",  "100 − max(0, Gini − 0.35) × 200 − overloadCount × 8"),
+    ("負載均衡 (18%)",  "100 − GiniPenalty − overloadCount×8 − top1SharePenalty − P90/P50Penalty"),
     ("部門協作 (12%)",  "100 − asymCount × 15"),
     ("週報品質 (15%)",  "min(1, submitRate) × 60 + lengthScore × 0.3 + blockerFillRate × 10"),
 ]))
@@ -885,7 +885,7 @@ story.append(kv_table([
     ("b (BM25)",           "0.75 — 長度正規化強度。0=不正規化、1=完全正規化。"),
     ("FIELD_WEIGHTS",      "title=5.0、tags=4.0、summary=2.0、outcome=1.5、owner=1.0、detail=1.0"),
     ("TIME_DECAY",         "[1.0, 0.7, 0.5, 0.35, 0.25, 0.15, 0.1, 0.05, 0.02] (9 週)"),
-    ("Gini 公平/不公平分界", "0.35（學術標準）"),
+    ("Gini 管理警示門檻", "0.35（負載離散程度警示，非公平裁判）"),
     ("Local Minima 閾值",  "3 分（拐點顯著性）"),
     ("Decision Impact windowWeeks", "4 週"),
     ("Org Health 權重",    "卡點 22% / 決策 18% / 交接 15% / 負載 18% / 協作 12% / 週報 15%"),
