@@ -134,7 +134,7 @@ def add_card(slide, x, y, w, h, *, bg_color=None, corner=0, alpha=False):
     return shp
 
 
-def add_footer(slide, page_num, total=16):
+def add_footer(slide, page_num, total=18):
     add_text(slide, Inches(0.8), Inches(7.15), Inches(6), Inches(0.3),
              "串連系統 v2.2 · 資管導論 第 13 組",
              size=9, color=INK_LITE)
@@ -237,11 +237,63 @@ def slide_agenda():
 # ===========================================================
 # Slide 3 — 痛點
 # ===========================================================
+def slide_context():
+    """情境與動機 — 為什麼選投資公司管理層"""
+    s = prs.slides.add_slide(blank_layout)
+    add_gradient_bg(s)
+    add_text(s, Inches(0.8), Inches(0.6), Inches(10), Inches(0.8),
+             "情境與動機", size=44, bold=True, color=WHITE)
+    add_text(s, Inches(0.8), Inches(1.45), Inches(11), Inches(0.6),
+             "為什麼把專案設定在「中型投資公司管理層」",
+             size=17, color=INK_LITE)
+
+    # 左：合作對象
+    add_card(s, Inches(0.6), Inches(2.3), Inches(6.0), Inches(4.5),
+             bg_color=WHITE, corner=0.05)
+    add_text(s, Inches(0.9), Inches(2.5), Inches(5.4), Inches(0.4),
+             "合作對象（情境設定）", size=13, bold=True, color=ACCENT)
+    add_text(s, Inches(0.9), Inches(3.0), Inches(5.4), Inches(3.6),
+             ("• 中型投資公司　|　17 員工　|　3 業務部門\n\n"
+              "• 組織架構\n"
+              "    ◦ 管理層：董事會 / 投資委員會 / 營運會議\n"
+              "    ◦ 投資研究部　7 人\n"
+              "    ◦ 業務開發部　6 人\n"
+              "    ◦ 資產管理部　4 人\n\n"
+              "• 經營特性\n"
+              "    ◦ 決策密度高（每週 5-10 件）\n"
+              "    ◦ 跨部門協作頻繁\n"
+              "    ◦ 案件週期長（盡調 → 投決 → 退場）"),
+             size=12, color=DEEP, line_spacing=1.5)
+
+    # 右：為什麼選這個情境
+    add_card(s, Inches(6.8), Inches(2.3), Inches(5.9), Inches(4.5),
+             bg_color=WHITE, corner=0.05)
+    add_text(s, Inches(7.1), Inches(2.5), Inches(5.3), Inches(0.4),
+             "為什麼選這個情境", size=13, bold=True, color=ACCENT)
+    add_text(s, Inches(7.1), Inches(3.0), Inches(5.3), Inches(3.6),
+             ("• 痛點明確\n"
+              "    投資產業的決策密度高、結果可量化，\n"
+              "    「資訊不對稱」造成的損失最容易展示。\n\n"
+              "• 場景熟悉\n"
+              "    組員曾於投信／投顧暑期實習，\n"
+              "    對「主管憑直覺管理」有第一手觀察。\n\n"
+              "• 系統可擴展\n"
+              "    本系統不綁定產業，調整部門結構與\n"
+              "    案件類型即可套用到顧問業、設計、\n"
+              "    R&D 等中型組織。"),
+             size=12, color=DEEP, line_spacing=1.5)
+
+    add_footer(s, 3)
+
+
+# ===========================================================
+# Slide 4 — 痛點
+# ===========================================================
 def slide_pain():
     s = prs.slides.add_slide(blank_layout)
     add_gradient_bg(s)
     add_text(s, Inches(0.8), Inches(0.6), Inches(8), Inches(0.8),
-             "痛點", size=44, bold=True, color=WHITE)
+             "面臨問題", size=44, bold=True, color=WHITE)
     add_text(s, Inches(0.8), Inches(1.45), Inches(11), Inches(0.6),
              "管理層每天面對的問題其實只有三個",
              size=18, color=INK_LITE)
@@ -265,7 +317,7 @@ def slide_pain():
         add_text(s, Inches(2.2), y + Inches(0.72), Inches(10), Inches(0.5),
                  a, size=14, color=SUBINK)
 
-    add_footer(s, 3)
+    add_footer(s, 4)
 
 
 # ===========================================================
@@ -344,7 +396,7 @@ def slide_overview():
                  card_w - Inches(0.8), Inches(0.3),
                  algo, size=10, color=INK_LITE, line_spacing=1.3)
 
-    add_footer(s, 4)
+    add_footer(s, 5)
 
 
 # ===========================================================
@@ -513,7 +565,7 @@ def slide_load():
              "v4：2 人過載，名單跟主管直覺一致\n"
              "命中率 100%。"),
         ],
-        page=5,
+        page=6,
         algo="經驗百分位 + 時間衰減 + Gini 不均度",
         formula="Load = Σᵢ wᵢ · Countᵢ · e^(−tᵢ/14)",
         reason="每件事 × 重要性權重 × 時間打折，累加後排名",
@@ -562,7 +614,7 @@ def slide_health():
              "我們的系統算完排序一模一樣，\n"
              "差距從原本 3% 變 14%（看得清楚了）。"),
         ],
-        page=6,
+        page=7,
         algo="六維加權評分 + 不對稱偵測",
     )
 
@@ -608,7 +660,7 @@ def slide_impact():
              "新版：2 好 1 差，\n"
              "跟管理層事後排序一致。"),
         ],
-        page=7,
+        page=8,
         algo="同期校準 (DiD) + 線性回歸",
         formula="adjustedΔ = (after − before) − β·t",
         reason="原始差扣掉「大盤本來會走到的位置」",
@@ -714,7 +766,7 @@ def slide_calibration():
         add_text(s, x, bottom_y + Inches(0.6), sw, Inches(0.25),
                  label, size=9, color=INK_LITE)
 
-    add_footer(s, 8)
+    add_footer(s, 9)
 
 
 # ===========================================================
@@ -794,7 +846,7 @@ def slide_bm25f():
              "欄位加權 × 詞稀有度 × 詞頻飽和 × 長度修正",
              size=9, color=INK_LITE)
 
-    add_footer(s, 9)
+    add_footer(s, 10)
 
 
 # ===========================================================
@@ -847,7 +899,7 @@ def slide_whatif():
               "• useDeferredValue 確保拖滑桿時不卡 UI（背景重算、前景流暢）"),
              size=12.5, color=DEEP, line_spacing=1.55)
 
-    add_footer(s, 10)
+    add_footer(s, 11)
 
 
 # ===========================================================
@@ -931,7 +983,7 @@ def slide_network():
              "經驗分佈標準差 σ ≈ 4.8 → 取 5 抓 top 16%",
              size=9, color=INK_LITE)
 
-    add_footer(s, 11)
+    add_footer(s, 12)
 
 
 # ===========================================================
@@ -1047,11 +1099,84 @@ def slide_competitive():
              "差異化：決策閉環 + 跨部門卡點 + 反推校準三項，市面無同類產品。",
              size=11, bold=True, color=INK_DARK, align=PP_ALIGN.RIGHT)
 
-    add_footer(s, 12)
+    add_footer(s, 13)
 
 
 # ===========================================================
-# Slide 13 — 技術架構
+# Slide 13 — 系統架構圖
+# ===========================================================
+def slide_architecture():
+    s = prs.slides.add_slide(blank_layout)
+    add_gradient_bg(s)
+    add_text(s, Inches(0.8), Inches(0.6), Inches(10), Inches(0.8),
+             "系統架構", size=44, bold=True, color=WHITE)
+    add_text(s, Inches(0.8), Inches(1.45), Inches(11), Inches(0.6),
+             "三層分離 — 使用者 / 介面 / 演算法 / 資料",
+             size=17, color=INK_LITE)
+
+    # 四個方塊由左到右（資料流）
+    boxes = [
+        ("使用者",        "管理層 / 主管 / 員工",      "三種角色\n三種視角"),
+        ("前端介面",      "React 19 + TypeScript",     "Dashboard\nWhat-if\n智能搜尋"),
+        ("演算法層",      "純前端計算 · 25+ 演算法",   "BM25F · Gini\nCohort · Time Decay"),
+        ("資料儲存",      "Cloud Firestore",            "即時訂閱\n離線同步\n8 個 collection"),
+    ]
+
+    box_w = Inches(2.7)
+    box_h = Inches(3.0)
+    gap = Inches(0.35)
+    total_w = box_w * 4 + gap * 3
+    start_x = (SLIDE_W - total_w) // 2
+    y = Inches(2.6)
+
+    for i, (title, sub, body) in enumerate(boxes):
+        x = start_x + (box_w + gap) * i
+        # 主框
+        add_card(s, x, y, box_w, box_h, bg_color=WHITE, corner=0.05)
+        # 頂部色條
+        bar = s.shapes.add_shape(MSO_SHAPE.RECTANGLE,
+                                  x, y, box_w, Inches(0.45))
+        bar.line.fill.background()
+        bar.fill.solid()
+        bar.fill.fore_color.rgb = ACCENT
+        # 編號
+        add_text(s, x + Inches(0.2), y + Inches(0.08),
+                 Inches(0.6), Inches(0.3),
+                 f"0{i+1}", size=11, bold=True, color=WHITE)
+        # 標題
+        add_text(s, x + Inches(0.7), y + Inches(0.08),
+                 box_w - Inches(0.9), Inches(0.3),
+                 title, size=14, bold=True, color=WHITE)
+        # 副標
+        add_text(s, x + Inches(0.25), y + Inches(0.7),
+                 box_w - Inches(0.5), Inches(0.6),
+                 sub, size=10.5, bold=True, color=DEEP, line_spacing=1.4)
+        # 內容
+        add_text(s, x + Inches(0.25), y + Inches(1.4),
+                 box_w - Inches(0.5), Inches(1.5),
+                 body, size=11, color=INK_LITE, line_spacing=1.6)
+
+        # 箭頭（最後一個不畫）
+        if i < 3:
+            arr = s.shapes.add_connector(3,
+                x + box_w, y + Inches(1.4),
+                x + box_w + gap, y + Inches(1.4))
+            arr.line.color.rgb = ACCENT
+            arr.line.width = Pt(2)
+
+    # 底部說明
+    add_text(s, M_LEFT_eq := Inches(0.8), Inches(5.85), Inches(11.7), Inches(0.5),
+             "資料流：使用者 → 前端 React 介面 → 演算法層即時計算 → Firestore 儲存與訂閱",
+             size=12.5, color=DEEP)
+    add_text(s, Inches(0.8), Inches(6.3), Inches(11.7), Inches(0.4),
+             "設計優勢：演算法與資料分離，未來換 DB 或加新演算法都不影響其他模組。",
+             size=11, color=INK_LITE)
+
+    add_footer(s, 14)
+
+
+# ===========================================================
+# Slide 14 — 技術架構
 # ===========================================================
 def slide_tech():
     s = prs.slides.add_slide(blank_layout)
@@ -1092,7 +1217,7 @@ def slide_tech():
         add_text(s, x + Inches(0.3), y + Inches(1.75), card_w - Inches(0.6), Inches(2.4),
                  body, size=12, color=DEEP, line_spacing=1.5)
 
-    add_footer(s, 13)
+    add_footer(s, 15)
 
 
 # ===========================================================
@@ -1137,7 +1262,7 @@ def slide_outcome():
         add_text(s, x + Inches(2.9), y + Inches(1.0), card_w - Inches(3.2), Inches(1.0),
                  d, size=12, color=INK_LITE, line_spacing=1.4)
 
-    add_footer(s, 14)
+    add_footer(s, 16)
 
 
 # ===========================================================
@@ -1175,7 +1300,7 @@ def slide_limits():
         add_text(s, Inches(1.8), yy + Inches(0.5), Inches(10), Inches(0.4),
                  d, size=12, color=SUBINK)
 
-    add_footer(s, 15)
+    add_footer(s, 17)
 
 
 # ===========================================================
@@ -1215,6 +1340,7 @@ def slide_closing():
 # ===========================================================
 slide_cover()
 slide_agenda()
+slide_context()       # NEW: 情境與動機
 slide_pain()
 slide_overview()
 slide_load()
@@ -1225,6 +1351,7 @@ slide_bm25f()
 slide_whatif()
 slide_network()
 slide_competitive()
+slide_architecture()  # NEW: 系統架構圖
 slide_tech()
 slide_outcome()
 slide_limits()
