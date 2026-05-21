@@ -351,37 +351,63 @@ def slide_overview():
 # Slide 5–7 — 三大模組 (員工負載 / 健康度 / 決策影響)
 # ===========================================================
 def slide_module(num, title, subtitle, scene, before, after,
-                 refs, page, algo=None):
-    """直觀版：場景 → BEFORE / AFTER → 為什麼相信"""
+                 refs, page, algo=None, formula=None, reason=None):
+    """直觀版：場景 → BEFORE / AFTER → 為什麼相信
+
+    可選 formula + reason 會擴展右上角 chip 成 3 行（演算法 / 公式 / 解讀）。
+    """
     s = prs.slides.add_slide(blank_layout)
     add_gradient_bg(s)
     add_text(s, Inches(0.8), Inches(0.4), Inches(2), Inches(0.4),
              f"模組 0{num}", size=12, bold=True, color=INK_LITE)
     add_text(s, Inches(0.8), Inches(0.7), Inches(11), Inches(0.7),
              title, size=32, bold=True, color=WHITE)
-    add_text(s, Inches(0.8), Inches(1.32), Inches(11), Inches(0.4),
+    # 副標寬度縮到 6.5 避免與 chip 重疊
+    add_text(s, Inches(0.8), Inches(1.32), Inches(6.5), Inches(0.4),
              subtitle, size=14, color=INK_LITE)
-    # 演算法 chip — 標題右上角，淡灰圓角小卡
+
+    # 演算法 + 公式 + 解讀 三行 chip（標題右上角，淡水泥灰）
     if algo:
+        has_formula = bool(formula)
+        chip_h = Inches(1.4) if has_formula else Inches(0.45)
         chip = s.shapes.add_shape(MSO_SHAPE.RECTANGLE,
-                                   Inches(7.5), Inches(0.95),
-                                   Inches(5.3), Inches(0.45))
+                                   Inches(7.5), Inches(0.6),
+                                   Inches(5.3), chip_h)
         chip.line.color.rgb = HAIRLINE
         chip.line.width = Pt(0.75)
         chip.fill.solid()
         chip.fill.fore_color.rgb = SOFT_BG
         tf = chip.text_frame
-        tf.margin_left = Inches(0.15); tf.margin_right = Inches(0.15)
-        tf.margin_top = Emu(0); tf.margin_bottom = Emu(0)
-        tf.vertical_anchor = MSO_ANCHOR.MIDDLE
-        p = tf.paragraphs[0]
-        p.alignment = PP_ALIGN.CENTER
-        run = p.add_run()
-        run.text = f"演算法　{algo}"
-        run.font.name = CN
-        run.font.size = Pt(10)
-        run.font.bold = True
-        run.font.color.rgb = INK_MID
+        tf.margin_left = Inches(0.18); tf.margin_right = Inches(0.18)
+        tf.margin_top = Inches(0.1); tf.margin_bottom = Inches(0.1)
+        tf.vertical_anchor = MSO_ANCHOR.TOP
+        tf.word_wrap = True
+
+        def chip_line(label, content, is_first=False, is_formula=False):
+            p = tf.paragraphs[0] if is_first else tf.add_paragraph()
+            p.alignment = PP_ALIGN.LEFT
+            p.line_spacing = 1.3
+            # label (灰小字)
+            r1 = p.add_run()
+            r1.text = f"{label}　"
+            r1.font.name = CN
+            r1.font.size = Pt(9)
+            r1.font.bold = True
+            r1.font.color.rgb = ACCENT
+            # content (深色)
+            r2 = p.add_run()
+            r2.text = content
+            r2.font.name = "Consolas" if is_formula else CN
+            r2.font.size = Pt(10)
+            r2.font.bold = False
+            r2.font.color.rgb = INK_DARK
+
+        chip_line("演算法", algo, is_first=True)
+        if has_formula:
+            chip_line("公式", formula, is_formula=True)
+            if reason:
+                chip_line("解讀", reason)
+
     add_asterisk(s, Inches(11.6), Inches(0.3), 0.8, WHITE)
 
     # 左：場景對話框
@@ -489,6 +515,8 @@ def slide_load():
         ],
         page=5,
         algo="經驗百分位 + 時間衰減 + Gini 不均度",
+        formula="Load = Σᵢ wᵢ · Countᵢ · e^(−tᵢ/14)",
+        reason="每件事 × 重要性權重 × 時間打折，累加後排名",
     )
 
 
@@ -582,6 +610,8 @@ def slide_impact():
         ],
         page=7,
         algo="同期校準 (DiD) + 線性回歸",
+        formula="adjustedΔ = (after − before) − β·t",
+        reason="原始差扣掉「大盤本來會走到的位置」",
     )
 
 
@@ -736,21 +766,33 @@ def slide_bm25f():
              bg_color=WHITE, corner=0.05)
     add_text(s, Inches(7.2), Inches(2.65), Inches(5.1), Inches(0.5),
              "三招讓搜尋變聰明", size=14, bold=True, color=HILITE)
-    add_text(s, Inches(7.2), Inches(3.15), Inches(5.1), Inches(3.5),
+    add_text(s, Inches(7.2), Inches(3.15), Inches(5.1), Inches(2.7),
              ("① 欄位有輕重\n"
-              "  關鍵字在「標題」=5 分，\n"
-              "  在「留言」只有 1 分。\n"
+              "  關鍵字在「標題」=5 分、「留言」=1 分\n"
               "  → 案件名稱才是真正在問什麼\n\n"
               "② 知道你打不完整\n"
               "  搜「太洋」也找得到「太洋證券」\n"
-              "  搜「林聿」也找得到「林聿平」\n"
               "  → 中文沒空格的特殊處理\n\n"
               "③ 同義詞自動轉\n"
-              "  「客戶」「客人」「使用者」\n"
-              "  視為同一個詞\n\n"
-              "命中率比一般搜尋提升 93%\n"
-              "(0.42 → 0.81)"),
+              "  「客戶」「客人」「使用者」視為同一個詞"),
              size=12, color=DEEP, line_spacing=1.4)
+
+    # ★ 公式 + 解讀 — 直接放在右卡底部
+    sep = s.shapes.add_connector(1,
+        Inches(7.2), Inches(5.95),
+        Inches(12.0), Inches(5.95))
+    sep.line.color.rgb = HAIRLINE
+    sep.line.width = Pt(0.75)
+
+    add_text(s, Inches(7.2), Inches(6.05), Inches(5.1), Inches(0.35),
+             "公式 (簡化版)",
+             size=10, bold=True, color=ACCENT)
+    add_text(s, Inches(7.2), Inches(6.35), Inches(5.1), Inches(0.35),
+             "score = Σ wᶠ · IDF · TF / (TF + k₁(1−b+b·dl/avgdl))",
+             size=10, bold=True, color=INK_DARK, font="Consolas")
+    add_text(s, Inches(7.2), Inches(6.65), Inches(5.1), Inches(0.35),
+             "欄位加權 × 詞稀有度 × 詞頻飽和 × 長度修正",
+             size=9, color=INK_LITE)
 
     add_footer(s, 9)
 
@@ -863,19 +905,31 @@ def slide_network():
              bg_color=WHITE, corner=0.05)
     add_text(s, Inches(7.2), Inches(2.65), Inches(5.1), Inches(0.5),
              "怎麼判斷「卡」？", size=14, bold=True, color=HILITE)
-    add_text(s, Inches(7.2), Inches(3.15), Inches(5.1), Inches(3.5),
+    add_text(s, Inches(7.2), Inches(3.15), Inches(5.1), Inches(2.7),
              ("健康的部門互動會「來來回回」：\n"
               "A 問 B 5 次，B 也回 A 5 次，OK。\n\n"
-              "不健康的長這樣：\n"
-              "A 問 B 9 次，B 只回 A 1 次\n"
-              "→ A 在追，B 在躲，這就是「卡點」\n\n"
-              "我們的判斷標準\n"
-              "  差距 ≥ 5 次 → 紅燈警告\n"
-              "  (相當於統計上前 16% 的不平衡)\n\n"
-              "實測：主管心中有 3 對「卡」的部門，\n"
-              "      系統自動抓出 2 對（67% 命中）\n"
-              "      抓到的都對（0 個誤報）"),
+              "不健康：A 問 9 次、B 只回 1 次\n"
+              "→ A 在追、B 在躲 = 「卡點」\n\n"
+              "判斷標準：差距 ≥ 5 次 → 紅燈\n"
+              "(相當於統計上前 16% 的不平衡)"),
              size=12, color=DEEP, line_spacing=1.45)
+
+    # ★ 公式 + 解讀（右卡底部）
+    sep = s.shapes.add_connector(1,
+        Inches(7.2), Inches(5.95),
+        Inches(12.0), Inches(5.95))
+    sep.line.color.rgb = HAIRLINE
+    sep.line.width = Pt(0.75)
+
+    add_text(s, Inches(7.2), Inches(6.05), Inches(5.1), Inches(0.35),
+             "公式",
+             size=10, bold=True, color=ACCENT)
+    add_text(s, Inches(7.2), Inches(6.35), Inches(5.1), Inches(0.35),
+             "Δ = (A → B) − (B → A)　|　閾值 = 1σ ≈ 5 次",
+             size=10, bold=True, color=INK_DARK, font="Consolas")
+    add_text(s, Inches(7.2), Inches(6.65), Inches(5.1), Inches(0.35),
+             "經驗分佈標準差 σ ≈ 4.8 → 取 5 抓 top 16%",
+             size=9, color=INK_LITE)
 
     add_footer(s, 11)
 
