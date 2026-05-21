@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""串連系統 v2.2 — 簡報產生器（Notion 奇裭風：奶白底 + 暖深棕 + 橘黃 accent）"""
+"""串連系統 v2.2 — 簡報產生器（工業風：水泥米底 + 磚橙 + 直角硬邊）"""
 import sys
 from pptx import Presentation
 from pptx.util import Inches, Pt, Emu
@@ -12,16 +12,16 @@ from lxml import etree
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
-# ============ 配色（Notion 奇裭風）============
-BG        = RGBColor(0xFA, 0xFA, 0xF7)  # 奶白底（warm off-white）
-SOFT_BG   = RGBColor(0xF5, 0xF4, 0xEE)  # 卡片淡暖灰（stone-100 暖調）
-INK_DARK  = RGBColor(0x1C, 0x19, 0x17)  # 主文字深棕黑（stone-900）
-INK_MID   = RGBColor(0x44, 0x40, 0x3C)  # 次文字暖深灰（stone-700）
-INK_LITE  = RGBColor(0x78, 0x71, 0x6C)  # 註解暖灰（stone-500）
-HAIRLINE  = RGBColor(0xE7, 0xE5, 0xE0)  # 細線暖灰（stone-200）
-ACCENT    = RGBColor(0xD9, 0x77, 0x06)  # 主強調：橘黃（amber-600，Notion brand-ish）
-HOT       = RGBColor(0xDC, 0x26, 0x26)  # 警示紅（red-600）
-COOL      = RGBColor(0x16, 0xA3, 0x4A)  # 成功綠（green-600）
+# ============ 配色（工業風：水泥米 + 磚橙 + 硬邊）============
+BG        = RGBColor(0xF4, 0xF1, 0xED)  # 水泥米底
+SOFT_BG   = RGBColor(0xE8, 0xE3, 0xDA)  # 卡片淡水泥灰
+INK_DARK  = RGBColor(0x1A, 0x1A, 0x1A)  # 深黑（碳灰）
+INK_MID   = RGBColor(0x3D, 0x3D, 0x3D)  # 鋼鐵灰
+INK_LITE  = RGBColor(0x6B, 0x6B, 0x6B)  # 混凝土灰
+HAIRLINE  = RGBColor(0xC8, 0xC2, 0xB7)  # 淺水泥灰（細線）
+ACCENT    = RGBColor(0xE6, 0x7E, 0x22)  # 主強調：磚橙
+HOT       = RGBColor(0xC0, 0x39, 0x2B)  # 警示磚紅
+COOL      = RGBColor(0x4A, 0x67, 0x41)  # 軍綠（成功）
 
 # 對外別名
 WHITE  = INK_DARK   # 「印在底上的標題」改成深字
@@ -94,9 +94,8 @@ def add_asterisk(slide, x, y, size_in=1.1, color=None, alpha=None):
 
 def add_pill(slide, x, y, w, h, text, *, bg_color=WHITE, text_color=DEEP,
              size=20, bold=True, align=PP_ALIGN.CENTER):
-    """白色圓角膠囊卡片"""
-    shp = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, x, y, w, h)
-    shp.adjustments[0] = 0.4
+    """工業風：方形膠囊（直角硬邊）"""
+    shp = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, x, y, w, h)
     shp.line.fill.background()
     if bg_color is None:
         shp.fill.background()
@@ -119,10 +118,10 @@ def add_pill(slide, x, y, w, h, text, *, bg_color=WHITE, text_color=DEEP,
     return shp
 
 
-def add_card(slide, x, y, w, h, *, bg_color=None, corner=0.04, alpha=False):
-    """極簡風卡片：預設透明 + hairline 邊框；只有特意傳 bg_color 才填色"""
-    shp = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, x, y, w, h)
-    shp.adjustments[0] = corner
+def add_card(slide, x, y, w, h, *, bg_color=None, corner=0, alpha=False):
+    """工業風卡片：直角矩形 + hairline 邊框（corner 參數已忽略）"""
+    shp = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, x, y, w, h)
+    # 工業風 = 直角，corner 參數保留為了向後相容但不再生效
     # 永遠用 hairline 邊框
     shp.line.color.rgb = HAIRLINE
     shp.line.width = Pt(0.75)
@@ -364,10 +363,9 @@ def slide_module(num, title, subtitle, scene, before, after,
              subtitle, size=14, color=INK_LITE)
     # 演算法 chip — 標題右上角，淡灰圓角小卡
     if algo:
-        chip = s.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE,
+        chip = s.shapes.add_shape(MSO_SHAPE.RECTANGLE,
                                    Inches(7.5), Inches(0.95),
                                    Inches(5.3), Inches(0.45))
-        chip.adjustments[0] = 0.4
         chip.line.color.rgb = HAIRLINE
         chip.line.width = Pt(0.75)
         chip.fill.solid()
@@ -724,10 +722,9 @@ def slide_bm25f():
                  name, size=12, bold=True, color=DEEP)
         # 長條
         bw = Inches(0.6 * w)
-        bar = s.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE,
+        bar = s.shapes.add_shape(MSO_SHAPE.RECTANGLE,
                                   Inches(2.0), y + Inches(0.05),
                                   bw, Inches(0.3))
-        bar.adjustments[0] = 0.3
         bar.line.fill.background()
         bar.fill.solid()
         bar.fill.fore_color.rgb = HILITE
