@@ -238,22 +238,22 @@ def slide_agenda():
 # Slide 3 — 痛點
 # ===========================================================
 def slide_context():
-    """情境與動機 — 為什麼選投資公司管理層"""
+    """合作對象與動機 — 串聯公司實際合作"""
     s = prs.slides.add_slide(blank_layout)
     add_gradient_bg(s)
     add_text(s, Inches(0.8), Inches(0.6), Inches(10), Inches(0.8),
-             "情境與動機", size=44, bold=True, color=WHITE)
+             "合作對象與動機", size=44, bold=True, color=WHITE)
     add_text(s, Inches(0.8), Inches(1.45), Inches(11), Inches(0.6),
-             "為什麼把專案設定在「中型投資公司管理層」",
+             "與「串聯」中型投資公司實際合作 — 痛點來自 5 位管理層問卷",
              size=17, color=INK_LITE)
 
     # 左：合作對象
     add_card(s, Inches(0.6), Inches(2.3), Inches(6.0), Inches(4.5),
              bg_color=WHITE, corner=0.05)
     add_text(s, Inches(0.9), Inches(2.5), Inches(5.4), Inches(0.4),
-             "合作對象（情境設定）", size=13, bold=True, color=ACCENT)
+             "合作公司 ──「串聯」", size=13, bold=True, color=ACCENT)
     add_text(s, Inches(0.9), Inches(3.0), Inches(5.4), Inches(3.6),
-             ("• 中型投資公司　|　17 員工　|　3 業務部門\n\n"
+             ("• 中型投資公司　|　約 17 員工　|　3 業務部門\n\n"
               "• 組織架構\n"
               "    ◦ 管理層：董事會 / 投資委員會 / 營運會議\n"
               "    ◦ 投資研究部　7 人\n"
@@ -265,22 +265,24 @@ def slide_context():
               "    ◦ 案件週期長（盡調 → 投決 → 退場）"),
              size=12, color=DEEP, line_spacing=1.5)
 
-    # 右：為什麼選這個情境
+    # 右：合作方式與動機
     add_card(s, Inches(6.8), Inches(2.3), Inches(5.9), Inches(4.5),
              bg_color=WHITE, corner=0.05)
     add_text(s, Inches(7.1), Inches(2.5), Inches(5.3), Inches(0.4),
-             "為什麼選這個情境", size=13, bold=True, color=ACCENT)
+             "合作方式與動機", size=13, bold=True, color=ACCENT)
     add_text(s, Inches(7.1), Inches(3.0), Inches(5.3), Inches(3.6),
-             ("• 痛點明確\n"
-              "    投資產業的決策密度高、結果可量化，\n"
-              "    「資訊不對稱」造成的損失最容易展示。\n\n"
-              "• 場景熟悉\n"
-              "    組員曾於投信／投顧暑期實習，\n"
-              "    對「主管憑直覺管理」有第一手觀察。\n\n"
-              "• 系統可擴展\n"
-              "    本系統不綁定產業，調整部門結構與\n"
-              "    案件類型即可套用到顧問業、設計、\n"
-              "    R&D 等中型組織。"),
+             ("• 合作方式\n"
+              "    ◦ 訪談對象：5 位管理層\n"
+              "    ◦ 形式：簡易結構化問卷\n"
+              "    ◦ 範圍：聚焦痛點蒐集\n\n"
+              "• 為什麼是「串聯」\n"
+              "    投資產業決策密度高、跨部門協作\n"
+              "    頻繁，「主管憑直覺管理」的損失\n"
+              "    最容易被量化展示。\n\n"
+              "• 取得的資訊\n"
+              "    ◦ 三大痛點（負載 / 卡點 / 決策）\n"
+              "    ◦ 組織結構與角色定義\n"
+              "    ◦ 未取得真實營運資料（保密）"),
              size=12, color=DEEP, line_spacing=1.5)
 
     add_footer(s, 3)
