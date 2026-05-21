@@ -420,48 +420,7 @@ def slide_module(num, title, subtitle, scene, before, after,
     add_text(s, Inches(0.8), Inches(1.32), Inches(6.5), Inches(0.4),
              subtitle, size=14, color=INK_LITE)
 
-    # 演算法 + 公式 + 解讀 三行 chip（標題右上角，淡水泥灰）
-    if algo:
-        has_formula = bool(formula)
-        chip_h = Inches(1.4) if has_formula else Inches(0.45)
-        chip = s.shapes.add_shape(MSO_SHAPE.RECTANGLE,
-                                   Inches(7.5), Inches(0.6),
-                                   Inches(5.3), chip_h)
-        chip.line.color.rgb = HAIRLINE
-        chip.line.width = Pt(0.75)
-        chip.fill.solid()
-        chip.fill.fore_color.rgb = SOFT_BG
-        tf = chip.text_frame
-        tf.margin_left = Inches(0.18); tf.margin_right = Inches(0.18)
-        tf.margin_top = Inches(0.1); tf.margin_bottom = Inches(0.1)
-        tf.vertical_anchor = MSO_ANCHOR.TOP
-        tf.word_wrap = True
-
-        def chip_line(label, content, is_first=False, is_formula=False):
-            p = tf.paragraphs[0] if is_first else tf.add_paragraph()
-            p.alignment = PP_ALIGN.LEFT
-            p.line_spacing = 1.3
-            # label (灰小字)
-            r1 = p.add_run()
-            r1.text = f"{label}　"
-            r1.font.name = CN
-            r1.font.size = Pt(9)
-            r1.font.bold = True
-            r1.font.color.rgb = ACCENT
-            # content (深色)
-            r2 = p.add_run()
-            r2.text = content
-            r2.font.name = "Consolas" if is_formula else CN
-            r2.font.size = Pt(10)
-            r2.font.bold = False
-            r2.font.color.rgb = INK_DARK
-
-        chip_line("演算法", algo, is_first=True)
-        if has_formula:
-            chip_line("公式", formula, is_formula=True)
-            if reason:
-                chip_line("解讀", reason)
-
+    # （已移除演算法 chip — user request）
     add_asterisk(s, Inches(11.6), Inches(0.3), 0.8, WHITE)
 
     # 左：場景對話框
