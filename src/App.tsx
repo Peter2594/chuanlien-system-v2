@@ -16,7 +16,6 @@ import History from "./pages/History";
 import BlockerAnalytics from "./pages/BlockerAnalytics";
 import OrgAnalytics from "./pages/OrgAnalytics";
 import MeetingPrep from "./pages/MeetingPrep";
-import LineBot from "./pages/LineBot";
 import WhatIf from "./pages/WhatIf";
 import { useAppData } from "./hooks/useAppData";
 
@@ -59,7 +58,6 @@ export default function App() {
     orgnetwork: "組織分析",
     meetings:   "會議準備",
     whatif:     "What-if 模擬",
-    linebot:    "LINE Bot 推播",
   };
   const subtitleMap: Record<TabId, string> = {
     dashboard:  "Admin Overview",
@@ -72,7 +70,6 @@ export default function App() {
     orgnetwork: "Organization Analytics",
     meetings:   "Meeting Prep",
     whatif:     "What-if Simulator",
-    linebot:    "Push Notifications",
   };
 
   return (
@@ -185,12 +182,6 @@ export default function App() {
               employees={data.employees}
               departments={data.departments}
               history={data.history}
-            />
-          )}
-          {activeTab === "linebot"    && (
-            <LineBot
-              reports={data.reports}
-              handoffs={data.handoffs}
             />
           )}
         </div>

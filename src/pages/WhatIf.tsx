@@ -41,7 +41,7 @@ const DIMS = [
   { key: "handoffSmoothness",  short: "交接流暢" },
   { key: "loadBalance",        short: "負載均衡" },
   { key: "crossDept",          short: "部門協作" },
-  { key: "reportQuality",      short: "週報品質" },
+  { key: "reportQuality",      short: "週報參與度" },
 ];
 
 export default function WhatIfPage({

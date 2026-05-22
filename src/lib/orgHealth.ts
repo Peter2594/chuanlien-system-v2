@@ -9,7 +9,7 @@
  *   - 交接流暢 (Handoff Smoothness): 待簽收逾時少 + 完成率高 = 越健康
  *   - 負載均衡 (Load Balance):      Gini、過載人數、Top1 占比、P90/P50 複合警示
  *   - 部門協作 (Cross-Dept):        雙向 mention 對稱 = 越健康
- *   - 週報品質 (Report Quality):    本週繳交率 + 平均字數 + 含卡點/協助比例 = 越健康
+ *   - 週報參與度 (Report Participation): 本週繳交率 + 平均字數 + 含卡點/協助比例 = 越健康
  */
 import { NOW } from "./dateUtils";
 import type { Report, Handoff, Decision, Blocker, Employee, Department, HistoryCase } from "./types";

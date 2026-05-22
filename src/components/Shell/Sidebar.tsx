@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, FileText, ArrowLeftRight, Gavel,
-  Users, Search, AlertCircle, Network, Calendar, MessageSquare,
+  Users, Search, AlertCircle, Network, Calendar,
   Menu, X, FlaskConical,
   type LucideIcon,
 } from "lucide-react";
@@ -9,7 +9,7 @@ import { cn } from "../../lib/utils";
 
 export type TabId =
   | "dashboard" | "report" | "handoff" | "decisions" | "employees"
-  | "history" | "analytics" | "orgnetwork" | "meetings" | "linebot" | "whatif";
+  | "history" | "analytics" | "orgnetwork" | "meetings" | "whatif";
 
 interface NavConfig {
   id: TabId;
@@ -29,7 +29,6 @@ export const NAV: NavConfig[] = [
   { id: "orgnetwork", icon: Network,         label: "OrgAnalytics 組織",   roles: ["admin"] },
   { id: "meetings",   icon: Calendar,        label: "MeetingPrep 會議",    roles: ["admin"] },
   { id: "whatif",     icon: FlaskConical,    label: "What-if 決策模擬",    roles: ["admin", "manager"] },
-  { id: "linebot",    icon: MessageSquare,   label: "LineBot 推播",        roles: ["admin", "manager", "member"] },
 ];
 
 interface SidebarProps {
