@@ -1,5 +1,5 @@
 /**
- * 核心演算法：員工負載、卡點風險、組織網絡、ORI、TF-IDF
+ * 核心演算法：員工負載、卡點風險、組織網絡、ORI
  */
 import { NOW, parseWeekStart } from "./dateUtils";
 import { BLOCKER_CATEGORIES } from "./constants";
@@ -139,7 +139,7 @@ export function analyzeEmployeeLoad(
       if (decay === 0) return;
       if (r.author === emp.name) {
         timeWeightedCases += reportComplexity(r) * decay;
-        if (decay > 0) activeWeeks++;
+        activeWeeks++;
         if (r.blockers?.trim()) {
           const bCount = Math.max(1, (r.blockers.match(/[•\-]/g) || []).length);
           blockerLoad += bCount * 2.5 * decay;

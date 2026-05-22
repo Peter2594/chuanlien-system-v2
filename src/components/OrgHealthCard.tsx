@@ -252,7 +252,7 @@ export function OrgHealthCard({
               <h3 className="text-base font-bold text-slate-900">組織健康度儀表板</h3>
               <span className="text-[10px] text-slate-400 font-bold tracking-wider ml-1">ORG HEALTH</span>
             </div>
-            <p className="text-xs text-slate-500">6 維雷達 × 12 週趨勢 — 點趨勢線看當週事件</p>
+            <p className="text-xs text-slate-500">5 維雷達 × 12 週趨勢 — 點趨勢線看當週事件</p>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
@@ -280,7 +280,7 @@ export function OrgHealthCard({
         {/* 雷達圖 */}
         <div className="lg:col-span-2 p-5 border-r border-slate-100">
           <div className="flex items-baseline justify-between mb-2">
-            <span className="text-xs font-bold text-slate-700">6 維雷達</span>
+            <span className="text-xs font-bold text-slate-700">5 維雷達</span>
             <span className="text-[10px] text-slate-400">本週 vs 12 週均值</span>
           </div>
           <div className="h-72">

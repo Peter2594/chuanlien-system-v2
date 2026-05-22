@@ -39,6 +39,7 @@ export function useAppData() {
   // 監聽 auth
   useEffect(() => {
     const unsub = watchAuth((u) => {
+      if (!u) syncEnabled.current = false; // logout 時重置，防下次登入初始載入觸發 sync
       setAuthUser(u);
       setAuthLoading(false);
     });

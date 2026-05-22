@@ -71,7 +71,7 @@ export default function Dashboard({
     // 卡點相關
     const p95Blockers = activeBlockers.filter((b) => (b.percentile || 0) >= 95);
     const p90Blockers = activeBlockers.filter((b) => (b.percentile || 0) >= 90 && (b.percentile || 0) < 95);
-    const topBlocker = activeBlockers.sort((a, b) => (b.percentile || 0) - (a.percentile || 0))[0];
+    const topBlocker = [...activeBlockers].sort((a, b) => (b.percentile || 0) - (a.percentile || 0))[0];
 
     // 卡點類別分布
     const blockerCategoryCount: Record<string, number> = {};
@@ -245,7 +245,7 @@ export default function Dashboard({
         </HeroCard>
 
         {/* ─────────────────────────────────────
-            Hero 2 · TF-IDF 歷史智慧庫
+            Hero 2 · BM25F 歷史智慧庫
         ───────────────────────────────────── */}
         <HeroCard
           icon={Search}
