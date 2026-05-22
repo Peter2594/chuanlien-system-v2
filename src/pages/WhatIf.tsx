@@ -41,7 +41,6 @@ const DIMS = [
   { key: "handoffSmoothness",  short: "交接流暢" },
   { key: "loadBalance",        short: "負載均衡" },
   { key: "crossDept",          short: "部門協作" },
-  { key: "reportQuality",      short: "週報參與度" },
 ];
 
 export default function WhatIfPage({
@@ -130,10 +129,11 @@ export default function WhatIfPage({
     if (!adjustedLoads.length) return projectedBase;
 
     const loadBalance = computeLoadBalanceScore(adjustedLoads).score;
-    const overall = +(projectedBase.overall + (loadBalance - projectedBase.loadBalance) * 0.18).toFixed(1);
+    const overall = +(projectedBase.overall + (loadBalance - projectedBase.loadBalance) * 0.21).toFixed(1);
 
     return { ...projectedBase, loadBalance: +loadBalance.toFixed(1), overall };
   }, [deferredScenario, employees, reports, simulated, projectedBase]);
+
 
   const delta = +(projected.overall - baseline.overall).toFixed(1);
   const baseLevel = healthLevel(baseline.overall);

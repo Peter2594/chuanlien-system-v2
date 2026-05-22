@@ -27,7 +27,6 @@ export interface DecisionImpact {
     handoffSmoothness: number;
     loadBalance: number;
     crossDept: number;
-    reportQuality: number;
   };
   verdict: "正面" | "中性" | "負面";
   score: number;                   // -100 ~ +100，用 adjustedDelta 計算
@@ -37,7 +36,7 @@ export interface DecisionImpact {
 
 const DIMS = [
   "blockerHealth", "decisionTimeliness", "handoffSmoothness",
-  "loadBalance", "crossDept", "reportQuality",
+  "loadBalance", "crossDept",
 ] as const;
 
 interface ImpactData {

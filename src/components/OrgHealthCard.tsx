@@ -150,7 +150,6 @@ const AXIS_LABELS = [
   { key: "handoffSmoothness",  short: "交接流暢", desc: "待簽收逾時越少越健康" },
   { key: "loadBalance",        short: "負載均衡", desc: "Gini > 0.35 觸發管理警示" },
   { key: "crossDept",          short: "部門協作", desc: "雙向溝通對稱為健康" },
-  { key: "reportQuality",      short: "週報參與度", desc: "繳交率+字數+卡點填寫" },
 ];
 
 export function OrgHealthCard({
@@ -173,7 +172,6 @@ export function OrgHealthCard({
       handoffSmoothness: avgVal("handoffSmoothness"),
       loadBalance: avgVal("loadBalance"),
       crossDept: avgVal("crossDept"),
-      reportQuality: avgVal("reportQuality"),
     };
     const inflections = detectInflectionPoints(series);
     return { series, current, avg, inflections };
@@ -203,9 +201,6 @@ export function OrgHealthCard({
 
   // 把抽象分數翻成「具體待辦數」 — 例：「還有 3 件嚴重卡點」
   const actionable = useMemo(() => {
-    const nowMs = +NOW;
-    const weekStartMs = nowMs - 7 * 86400000;
-
     const criticalBlockers = blockers
       .filter((b) => b.status !== "resolved")
       .map((b) => analyzeBlockerRecord(b, blockers, history, NOW))
@@ -227,23 +222,12 @@ export function OrgHealthCard({
     const overloaded = analyzeEmployeeLoad(reports, activeHandoffs, employees, NOW)
       .filter((l) => l.level === "overload").length;
 
-    const activeDepts = departments
-      .filter((d) => d.active && d.name !== "營運與管理層")
-      .map((d) => d.name);
-    const submittedDepts = new Set(
-      reports
-        .filter((r) => r.submittedAt && +new Date(r.submittedAt) > weekStartMs)
-        .map((r) => r.dept),
-    );
-    const notSubmitted = activeDepts.filter((d) => !submittedDepts.has(d)).length;
-
     return {
       blockerHealth:      criticalBlockers > 0 ? `還有 ${criticalBlockers} 件嚴重卡點` : "卡點都在控制中",
       decisionTimeliness: overdueDecisions  > 0 ? `還有 ${overdueDecisions} 件決策已逾期`    : "決策都按時完成",
       handoffSmoothness:  overdueHandoffs   > 0 ? `還有 ${overdueHandoffs} 件交接逾時待簽收` : "交接全部按時",
       loadBalance:        overloaded        > 0 ? `有 ${overloaded} 人負載過高`              : "負載分佈健康",
       crossDept:          "部門間有單向溝通積壓",
-      reportQuality:      notSubmitted      > 0 ? `本週還有 ${notSubmitted} 部門未交週報`    : "本週週報全數繳交",
     } as Record<string, string>;
   }, [blockers, decisions, handoffs, employees, reports, departments, history]);
 

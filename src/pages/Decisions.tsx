@@ -318,7 +318,6 @@ export default function DecisionsPage({
                             handoffSmoothness: "交接流暢",
                             loadBalance: "負載均衡",
                             crossDept: "部門協作",
-                            reportQuality: "週報參與度",
                           } as Record<string, string>)[key];
                           return (
                             <div key={key} className="flex items-center justify-between">

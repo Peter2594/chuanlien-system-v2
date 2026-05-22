@@ -3,13 +3,12 @@
  *
  * 設計原則：所有維度都正規化到 0-100，越高越健康（與 ORI 反向）
  *
- * 6 維：
+ * 5 維：
  *   - 卡點健康 (Blocker Health):    P95+ 卡點越少 + 平均 percentile 越低 = 越健康
  *   - 決策及時 (Decision Timeliness): 逾期決策少 + 已完成決策快 = 越健康
  *   - 交接流暢 (Handoff Smoothness): 待簽收逾時少 + 完成率高 = 越健康
  *   - 負載均衡 (Load Balance):      Gini、過載人數、Top1 占比、P90/P50 複合警示
  *   - 部門協作 (Cross-Dept):        雙向 mention 對稱 = 越健康
- *   - 週報參與度 (Report Participation): 本週繳交率 + 平均字數 + 含卡點/協助比例 = 越健康
  */
 import { NOW } from "./dateUtils";
 import type { Report, Handoff, Decision, Blocker, Employee, Department, HistoryCase } from "./types";
@@ -21,7 +20,6 @@ export interface HealthSnapshot {
   handoffSmoothness: number;
   loadBalance: number;
   crossDept: number;
-  reportQuality: number;
   overall: number;
   weekISO: string;        // 該週週次 (用於趨勢圖 x 軸)
   events: string[];       // 該週發生的關鍵事件，用於 hover 提示
@@ -192,36 +190,12 @@ export function computeHealthSnapshot(
     if (asymCount > 0) events.push(`${asymCount} 組部門單向溝通`);
   }
 
-  // ===== 6. 週報品質 =====
-  let reportQuality = 100;
-  const expectedDeptSet = new Set(
-    departments.filter((d) => d.active && d.name !== "營運與管理層").map((d) => d.name),
-  );
-  const expectedDepts = expectedDeptSet.size;
-  // 分母與分子都過濾出「應交週報的部門」，避免管理層交了週報導致 rate > 1
-  const submittedDepts = new Set(weekReports.filter((r) => expectedDeptSet.has(r.dept)).map((r) => r.dept));
-  const submissionRate = expectedDepts > 0 ? Math.min(1, submittedDepts.size / expectedDepts) : 1;
-  // 平均「案件 + 卡點 + 協助 + 下週」字數
-  if (weekReports.length > 0) {
-    const avgLen = weekReports.reduce((s, r) => {
-      return s + (r.cases || "").length + (r.blockers || "").length + (r.needHelp || "").length + (r.nextWeek || "").length;
-    }, 0) / weekReports.length;
-    const hasBlockerField = weekReports.filter((r) => (r.blockers || "").trim()).length / weekReports.length;
-    // 基準：80 字以上 = 滿分；30 字以下 = 大扣分
-    const lengthScore = clamp((avgLen - 30) / 50 * 100);
-    reportQuality = clamp(submissionRate * 60 + lengthScore * 0.3 + hasBlockerField * 10);
-  } else {
-    reportQuality = submissionRate * 60;
-  }
-  if (submissionRate < 1) events.push(`${expectedDepts - submittedDepts.size} 個部門未交週報`);
-
   const overall = +(
-    blockerHealth * 0.22
-    + decisionTimeliness * 0.18
-    + handoffSmoothness * 0.15
-    + loadBalance * 0.18
-    + crossDept * 0.12
-    + reportQuality * 0.15
+    blockerHealth     * 0.26
+    + decisionTimeliness * 0.21
+    + handoffSmoothness  * 0.18
+    + loadBalance        * 0.21
+    + crossDept          * 0.14
   ).toFixed(1);
 
   return {
@@ -230,7 +204,6 @@ export function computeHealthSnapshot(
     handoffSmoothness: +handoffSmoothness.toFixed(1),
     loadBalance: +loadBalance.toFixed(1),
     crossDept: +crossDept.toFixed(1),
-    reportQuality: +reportQuality.toFixed(1),
     overall,
     weekISO,
     events,
