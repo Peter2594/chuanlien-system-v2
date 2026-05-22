@@ -205,7 +205,7 @@ const THIS_WEEK_REPORTS: Report[] = [
       "• 太洋證券法律意見書追蹤 — 外部律師事務所反覆要求補資料，鍾皓明已介入協調",
       "• 駒田工業二次盡調 — 已完成商業模式驗證，客戶留存率訪談排程中",
     ].join("\n"),
-    blockers: "田宮電機正式財報拖延 4 週嚴重影響投委會排程；太洋證券法律意見書也已 30 天未到，兩件都已達 P95+ 極高風險。",
+    blockers: "Two blockers have exceeded the 3-sigma immediate-action threshold.",
     needHelp: "需業開部林聿平協助田宮電機創辦人溝通；太洋證券建議董事長親自致電對方律所合夥人。",
     nextWeek: "完成牧野精機技術 DD 報告初稿；推進駒田工業二次盡調收尾。",
     keywords: ["田宮電機", "牧野精機", "太洋證券", "盡調", "Pre-A"],
@@ -409,11 +409,11 @@ export const SEED_DECISIONS: Decision[] = [
 ];
 
 // ===== 卡點 =====
-// 各類別歷史 P75 ≈ 7-12 天，P90 ≈ 14-22 天，P95 ≈ 18-28 天
+// 各類別歷史 P75 ≈ 7-12 天，P90(ref) ≈ 14-22 天，P95(ref) ≈ 18-28 天
 // 故 currentDays:
-//   28+ → critical (P95+)、20+ → high、10+ → medium、其餘 normal
+//   28+ → critical (3-sigma)、20+ → high、10+ → medium、其餘 normal
 export const SEED_BLOCKERS: Blocker[] = [
-  // === critical (P95+) ===
+  // === critical (3-sigma) ===
   {
     id: "b-1", title: "田宮電機財務資料尚未收齊",
     description: "創辦人提供之 2024 年度財報為簡化版，正式版催了 4 週仍未到，盡調卡關。",
@@ -431,7 +431,7 @@ export const SEED_BLOCKERS: Blocker[] = [
     relatedDepartments: ["資產管理部"],
   },
 
-  // === high (P90+) ===
+  // === high (2-sigma) ===
   {
     id: "b-3", title: "伊勢島飯店退場稅務等待管理層決議",
     description: "退場稅務優化方案已備齊,需董事會專案會議拍板,排程一直延後。",

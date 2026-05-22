@@ -4,7 +4,7 @@
  * 設計原則：所有維度都正規化到 0-100，越高越健康（與 ORI 反向）
  *
  * 5 維：
- *   - 卡點健康 (Blocker Health):    P95+ 卡點越少 + 平均 percentile 越低 = 越健康
+ *   - 卡點健康 (Blocker Health):    2σ/3σ 卡點越少 + 平均 percentile 越低 = 越健康
  *   - 決策及時 (Decision Timeliness): 逾期決策少 + 已完成決策快 = 越健康
  *   - 交接流暢 (Handoff Smoothness): 待簽收逾時少 + 完成率高 = 越健康
  *   - 負載均衡 (Load Balance):      Gini、2σ/3σ 異常值、Top1 占比複合警示
@@ -135,14 +135,14 @@ export function computeHealthSnapshot(
     const analyses = activeBlockers
       .filter(wasUnresolvedAt)
       .map((b) => analyzeBlockerRecord(b, blockers, history, asOf));
-    const p95 = analyses.filter((a) => a.level === "critical").length;
-    const p90 = analyses.filter((a) => a.level === "high").length;
+    const threeSigma = analyses.filter((a) => a.sigmaLevel === "critical").length;
+    const twoSigma = analyses.filter((a) => a.sigmaLevel === "warning").length;
     const avgP = analyses.length
       ? analyses.reduce((s, a) => s + (a.percentile || 0), 0) / analyses.length
       : 0;
-    blockerHealth = clamp(100 - p95 * 15 - p90 * 7 - Math.max(0, avgP - 50) * 0.8);
-    if (p95 > 0) events.push(`${p95} 件極高風險卡點`);
-    if (p90 > 0) events.push(`${p90} 件高風險卡點`);
+    blockerHealth = clamp(100 - threeSigma * 18 - twoSigma * 10 - Math.max(0, avgP - 50) * 0.6);
+    if (threeSigma > 0) events.push(`${threeSigma} 件卡點達 3σ立即處理`);
+    if (twoSigma > 0) events.push(`${twoSigma} 件卡點達 2σ紅標示警`);
   }
 
   // ===== 2. 決策及時 =====

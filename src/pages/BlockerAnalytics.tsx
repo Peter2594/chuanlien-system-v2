@@ -19,9 +19,9 @@ interface Props {
 type RiskLevel = "critical" | "high" | "medium" | "normal";
 
 const RISK_META: Record<RiskLevel, { label: string; color: string; ring: string; bg: string; text: string; dot: string }> = {
-  critical: { label: "極高風險", color: "bg-red-500",     ring: "ring-red-300",     bg: "bg-red-50",     text: "text-red-600",     dot: "bg-red-500" },
-  high:     { label: "高風險",   color: "bg-amber-500",   ring: "ring-amber-300",   bg: "bg-amber-50",   text: "text-amber-600",   dot: "bg-amber-500" },
-  medium:   { label: "關注中",   color: "bg-blue-500",    ring: "ring-blue-300",    bg: "bg-blue-50",    text: "text-blue-600",    dot: "bg-blue-500" },
+  critical: { label: "3σ立即處理", color: "bg-red-500",     ring: "ring-red-300",     bg: "bg-red-50",     text: "text-red-600",     dot: "bg-red-500" },
+  high:     { label: "2σ紅標示警", color: "bg-amber-500",   ring: "ring-amber-300",   bg: "bg-amber-50",   text: "text-amber-600",   dot: "bg-amber-500" },
+  medium:   { label: "P75關注",    color: "bg-blue-500",    ring: "ring-blue-300",    bg: "bg-blue-50",    text: "text-blue-600",    dot: "bg-blue-500" },
   normal:   { label: "正常",     color: "bg-emerald-500", ring: "ring-emerald-300", bg: "bg-emerald-50", text: "text-emerald-600", dot: "bg-emerald-500" },
 };
 
@@ -244,9 +244,9 @@ export default function BlockerAnalyticsPage({ blockers, history }: Props) {
                                   : "bg-emerald-50 text-emerald-800",
                                 )}>
                                   <strong className="font-bold">處理建議：</strong>
-                                  {a.level === "critical" && "已達極端拖延（極高風險），請立刻召開協調會議。"}
-                                  {a.level === "high"     && "建議在本週內安排升級處理。"}
-                                  {a.level === "medium"   && "進入關注區，請追蹤後續進度。"}
+                                  {a.level === "critical" && "????????? 3 ????????????????? owner?"}
+                                  {a.level === "high"     && "????????? 2 ??????????????????????"}
+                                  {a.level === "medium"   && "???? P75 ?????????????"}
                                   {a.level === "normal"   && "仍在正常處理時程內。"}
                                 </div>
                               )}
@@ -334,7 +334,7 @@ export default function BlockerAnalyticsPage({ blockers, history }: Props) {
                 <Stat label="平均"     value={c.mean.toFixed(1)} unit="天" />
                 <Stat label="Std"      value={c.std.toFixed(1)}  unit="天" />
                 <Stat label="一般上限" value={c.p75.toFixed(0)}  unit="天" />
-                <Stat label="警戒線"   value={c.p90.toFixed(0)}  unit="天" />
+                <Stat label="P90參考"  value={c.p90.toFixed(0)}  unit="天" />
               </div>
             </motion.button>
           ))}

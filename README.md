@@ -122,7 +122,7 @@ percentile(d) = |{ h ∈ history : h.daysToResolve ≤ d }| / |history|
 
 - 不假設常態分佈
 - 優先使用同類歷史，不足 5 筆則用全公司
-- 風險等級：P95+ critical / P90 high / P75 medium / 其他 normal
+- 風險等級：3σ critical / 2σ high / P75 medium / 其他 normal，P90/P95 只作為歷史分位參考
 
 ### 4. ORI (Organizational Risk Index)
 
@@ -132,7 +132,7 @@ ORI = 0.35·HCC + 0.25·DL + 0.25·BT + 0.15·CDC
 
 - HCC: Human Capital Concentration (Gini + Top-1 share + σ outliers)
 - DL: Decision Latency (平均執行 + 逾期)
-- BT: Blocker Tail Risk (P90+ 數量 + 平均分位)
+- BT: Blocker Tail Risk (2σ/3σ 數量 + 平均分位)
 - CDC: Cross-Dept Communication (不對稱次數)
 
 ---

@@ -45,7 +45,7 @@ export function NotificationPanel({ decisions, handoffs, blockers, reports, depa
   const items = useMemo<NotificationItem[]>(() => {
     const list: NotificationItem[] = [];
 
-    // 1. 極高 / 高風險卡點
+    // 1. 2σ / 3σ 卡點
     const risky = blockers
       .filter((b) => b.status !== "resolved")
       .map((b) => analyzeBlockerRecord(b, blockers, history))
@@ -57,7 +57,7 @@ export function NotificationPanel({ decisions, handoffs, blockers, reports, depa
         id: `blocker-${a.blocker?.id}`,
         level: a.level === "critical" ? "critical" : "warn",
         icon: <FileWarning size={14} />,
-        title: a.blocker?.title || "高風險卡點",
+        title: a.blocker?.title || "卡點 sigma 警示",
         desc: `${a.blocker?.dept} · ${a.categoryInfo?.label}`,
         meta: `${a.levelLabel} · 已卡 ${a.currentDays} 天 · P${a.percentile ?? "-"} · ${a.zScore.toFixed(2)}σ`,
         tab: "analytics",

@@ -54,7 +54,7 @@ function resolveEventItems(
     .filter((b) => b.status !== "resolved" && new Date(b.createdAt) <= asOf)
     .map((b) => ({ blocker: b, ana: analyzeBlockerRecord(b, data.blockers, data.history, asOf) }));
 
-  if (/極高風險卡點/.test(event)) {
+  if (/3σ立即處理/.test(event)) {
     return analyzeAll()
       .filter(({ ana }) => ana.level === "critical")
       .sort((a, b) => (b.ana.percentile || 0) - (a.ana.percentile || 0))
@@ -64,7 +64,7 @@ function resolveEventItems(
         emphasis: `當週已卡 ${ana.currentDays} 天 · P${ana.percentile ?? "-"} · ${ana.zScore.toFixed(2)}σ`,
       }));
   }
-  if (/高風險卡點/.test(event)) {
+  if (/2σ紅標示警/.test(event)) {
     return analyzeAll()
       .filter(({ ana }) => ana.level === "high")
       .sort((a, b) => (b.ana.percentile || 0) - (a.ana.percentile || 0))
@@ -199,12 +199,12 @@ export function OrgHealthCard({
   const pinnedSnap = pinnedWeek !== null ? series[pinnedWeek] : null;
   const pinnedWeekLabel = pinnedWeek !== null ? trendData[pinnedWeek].week : "";
 
-  // 把抽象分數翻成「具體待辦數」 — 例：「還有 3 件嚴重卡點」
+  // 把抽象分數翻成「具體待辦數」 — 例：「還有 3 件卡點達 2σ/3σ」
   const actionable = useMemo(() => {
     const criticalBlockers = blockers
       .filter((b) => b.status !== "resolved")
       .map((b) => analyzeBlockerRecord(b, blockers, history, NOW))
-      .filter((a) => a.level === "critical" || a.level === "high").length;
+      .filter((a) => a.sigmaLevel === "critical" || a.sigmaLevel === "warning").length;
 
     const overdueDecisions = decisions.filter((d) => {
       if (!d.decidedAt || !d.dueDate || d.dueDate === "即時生效") return false;
@@ -223,7 +223,7 @@ export function OrgHealthCard({
       .filter((l) => l.sigmaLevel === "warning" || l.sigmaLevel === "critical").length;
 
     return {
-      blockerHealth:      criticalBlockers > 0 ? `還有 ${criticalBlockers} 件嚴重卡點` : "卡點都在控制中",
+      blockerHealth:      criticalBlockers > 0 ? `?? ${criticalBlockers} ???? 2?/3?` : "???????",
       decisionTimeliness: overdueDecisions  > 0 ? `還有 ${overdueDecisions} 件決策已逾期`    : "決策都按時完成",
       handoffSmoothness:  overdueHandoffs   > 0 ? `還有 ${overdueHandoffs} 件交接逾時待簽收` : "交接全部按時",
       loadBalance:        overloaded        > 0 ? `有 ${overloaded} 人負載過高`              : "負載分佈健康",

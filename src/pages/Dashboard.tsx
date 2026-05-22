@@ -69,9 +69,11 @@ export default function Dashboard({
     gini = scoresAsc.length > 0 ? gini / (scoresAsc.length * sumScores) : 0;
 
     // 卡點相關
-    const p95Blockers = activeBlockers.filter((b) => (b.percentile || 0) >= 95);
-    const p90Blockers = activeBlockers.filter((b) => (b.percentile || 0) >= 90 && (b.percentile || 0) < 95);
-    const topBlocker = [...activeBlockers].sort((a, b) => (b.percentile || 0) - (a.percentile || 0))[0];
+    const criticalBlockers = activeBlockers.filter((b) => b.sigmaLevel === "critical");
+    const warningBlockers = activeBlockers.filter((b) => b.sigmaLevel === "warning");
+    const topBlocker = [...activeBlockers].sort((a, b) =>
+      b.zScore - a.zScore || (b.percentile || 0) - (a.percentile || 0),
+    )[0];
 
     // 卡點類別分布
     const blockerCategoryCount: Record<string, number> = {};
@@ -103,7 +105,7 @@ export default function Dashboard({
           reason: days > 0 ? `${d.assignedDept} · 逾期 ${days} 天` : `${d.assignedDept} · 已逾期`,
         };
       }),
-      ...p95Blockers.slice(0, 2).map((b) => ({
+      ...[...criticalBlockers, ...warningBlockers].slice(0, 2).map((b) => ({
         id: "b-" + (b.blocker?.id || Math.random()), type: "blocker" as const,
         name: b.blocker?.title || b.originalText || "未命名卡點",
         reason: `${b.categoryInfo?.label || "卡點"} · 已卡 ${b.currentDays} 天 · P${b.percentile} · ${b.zScore.toFixed(2)}σ`,
@@ -116,7 +118,7 @@ export default function Dashboard({
 
     return {
       loads, overloaded, topLoaded, deptLoads, gini,
-      activeBlockers, p95Blockers, p90Blockers, topBlocker, blockerCategoryCount,
+      activeBlockers, criticalBlockers, warningBlockers, topBlocker, blockerCategoryCount,
       topTags,
       todoItems,
       ori, lvl,
@@ -311,9 +313,9 @@ export default function Dashboard({
             </span>
             <span className="text-sm text-slate-500 font-medium">筆活躍</span>
             <span className="ml-auto text-[10px]">
-              <span className="text-red-500 font-bold">{data.p95Blockers.length} 件極端</span>
+              <span className="text-red-500 font-bold">{data.criticalBlockers.length} 件3σ</span>
               <span className="text-slate-300 mx-1">/</span>
-              <span className="text-amber-600 font-bold">{data.p90Blockers.length} 件嚴重</span>
+              <span className="text-amber-600 font-bold">{data.warningBlockers.length} 件2σ</span>
             </span>
           </div>
 
@@ -321,7 +323,7 @@ export default function Dashboard({
           {data.topBlocker && data.topBlocker.hasData && (
             <div className="bg-slate-50 rounded-xl p-3 mb-4">
               <div className="text-[10px] text-slate-400 mb-1 tracking-wide font-bold">
-                TAIL RISK · 最高風險
+                SIGMA RISK · 最高異常
               </div>
               <div className="flex items-start justify-between gap-2">
                 <span className="text-sm font-bold text-slate-900 truncate">
@@ -329,7 +331,9 @@ export default function Dashboard({
                 </span>
                 <span className={cn(
                   "text-xs font-mono font-bold shrink-0",
-                  (data.topBlocker.percentile || 0) >= 95 ? "text-red-500" : "text-amber-600"
+                  data.topBlocker.sigmaLevel === "critical" ? "text-red-500"
+                  : data.topBlocker.sigmaLevel === "warning" ? "text-amber-600"
+                  : "text-slate-600"
                 )}>
                   P{data.topBlocker.percentile} · {data.topBlocker.zScore.toFixed(2)}σ
                 </span>

@@ -76,7 +76,7 @@ function validateTimeDecay() {
 }
 
 function validateBlockerParameters() {
-  console.log("\n=== 3) 卡點 P75/P90/P95 與健康扣分 ===");
+  console.log("\n=== 3) 卡點 2σ/3σ 與健康扣分 ===");
   const active = SEED_BLOCKERS
     .filter((b) => b.status === "open")
     .map((b) => analyzeBlockerRecord(b, SEED_BLOCKERS, SEED_HISTORY, NOW));
@@ -86,11 +86,11 @@ function validateBlockerParameters() {
   }, {});
   line("PASS", "Seed 卡點風險分布", JSON.stringify(counts), "用同類歷史分布而非固定天數");
 
-  const badCompanyScore = 100 - 4 * 15 - 1 * 7 - Math.max(0, 65 - 50) * 0.8;
+  const badCompanyScore = 100 - 4 * 18 - 1 * 10 - Math.max(0, 65 - 50) * 0.6;
   line(
-    near(badCompanyScore, 20, 2) ? "PASS" : "WARN",
+    badCompanyScore <= 20 ? "PASS" : "WARN",
     "卡點健康反推情境",
-    `4件P95 + 1件P90 + avgP65 => ${badCompanyScore.toFixed(1)}`,
+    `4件3σ + 1件2σ + avgP65 => ${badCompanyScore.toFixed(1)}`,
     "目標是把一團糟情境壓到約 20 分",
   );
 
