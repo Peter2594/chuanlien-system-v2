@@ -45,7 +45,7 @@ export default function Dashboard({
     const lvl = oriLevel(ori.index);
 
     // 員工負載相關
-    const overloaded = loads.filter((l) => l.level === "overload");
+    const overloaded = loads.filter((l) => l.sigmaLevel === "warning" || l.sigmaLevel === "critical");
     const topLoaded = loads[0]; // already sorted by loadScore desc
     const deptLoadMap: Record<string, number> = {};
     const deptCountMap: Record<string, number> = {};
@@ -198,7 +198,7 @@ export default function Dashboard({
               {data.overloaded.length}
             </span>
             <div>
-              <div className="text-sm text-slate-700 font-bold">人過載</div>
+              <div className="text-sm text-slate-700 font-bold">人示警</div>
               <div className="text-[10px] text-slate-400 font-mono">
                 Gini 係數 {data.gini.toFixed(2)}
               </div>
@@ -209,10 +209,8 @@ export default function Dashboard({
           {data.topLoaded && (
             <div className={cn(
               "rounded-xl p-4 border-l-4",
-              data.topLoaded.percentile >= 90
+              data.topLoaded.sigmaLevel !== "normal"
                 ? "bg-red-50 border-red-500"
-                : data.topLoaded.percentile >= 75
-                ? "bg-amber-50 border-amber-500"
                 : "bg-slate-50 border-slate-300",
             )}>
               <div className="text-[10px] text-slate-500 mb-2 tracking-wide font-bold">
@@ -228,11 +226,13 @@ export default function Dashboard({
                 <div className="text-right shrink-0 ml-3">
                   <div className={cn(
                     "text-2xl font-black leading-none",
-                    data.topLoaded.percentile >= 90 ? "text-red-500" : "text-amber-600",
+                    data.topLoaded.sigmaLevel !== "normal" ? "text-red-500" : "text-slate-600",
                   )}>
                     P{data.topLoaded.percentile}
                   </div>
-                  <div className="text-[10px] text-slate-400 mt-1">負載分 {data.topLoaded.loadScore.toFixed(1)}</div>
+                  <div className="text-[10px] text-slate-400 mt-1">
+                    負載分 {data.topLoaded.loadScore.toFixed(1)} · {data.topLoaded.zScore.toFixed(2)}σ
+                  </div>
                 </div>
               </div>
             </div>

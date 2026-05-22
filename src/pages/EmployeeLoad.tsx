@@ -16,8 +16,8 @@ interface Props {
 }
 
 const LEVEL_STYLE = {
-  overload: { label: "過載", color: "bg-red-500",    text: "text-red-600",    bg: "bg-red-50" },
-  high:     { label: "高",   color: "bg-amber-500",  text: "text-amber-700",  bg: "bg-amber-50" },
+  overload: { label: "馬上解決", color: "bg-red-600",    text: "text-red-700",    bg: "bg-red-50" },
+  high:     { label: "紅標示警", color: "bg-red-500",    text: "text-red-600",    bg: "bg-red-50" },
   normal:   { label: "正常", color: "bg-emerald-500", text: "text-emerald-700", bg: "bg-emerald-50" },
   low:      { label: "低",   color: "bg-slate-400",  text: "text-slate-600",  bg: "bg-slate-50" },
   idle:     { label: "閒置", color: "bg-slate-300",  text: "text-slate-400",  bg: "bg-slate-50" },
@@ -55,7 +55,7 @@ export default function EmployeeLoadPage({ reports, handoffs, employees }: Props
   const prevByName: Record<string, number> = {};
   prevLoads.forEach((l) => { prevByName[l.name] = l.loadScore; });
 
-  const overload = loads.filter((l) => l.level === "overload");
+  const overload = loads.filter((l) => l.sigmaLevel === "warning" || l.sigmaLevel === "critical");
   const idle = loads.filter((l) => l.level === "idle");
   const totalScore = loads.reduce((s, l) => s + l.loadScore, 0);
   const avgScore = loads.length ? totalScore / loads.length : 0;
@@ -82,13 +82,13 @@ export default function EmployeeLoadPage({ reports, handoffs, employees }: Props
     filter === "overload" ? overload
     : filter === "idle" ? idle
     : filter && filter.type === "dept" ? byDept[filter.name] || []
-    : null;
+    : loads;
 
   const filterTitle =
-    filter === "overload" ? `過載員工 (${overload.length} 人)`
+    filter === "overload" ? `負載示警員工 (${overload.length} 人)`
     : filter === "idle" ? `閒置員工 (${idle.length} 人)`
     : filter && filter.type === "dept" ? `${filter.name} (${byDept[filter.name]?.length || 0} 人)`
-    : "";
+    : `全部員工 (${loads.length} 人)`;
 
   return (
     <div className="max-w-6xl mx-auto pb-8">
@@ -143,7 +143,7 @@ export default function EmployeeLoadPage({ reports, handoffs, employees }: Props
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-6">
         <div className="lg:col-span-2 grid grid-cols-3 gap-3">
           <ClickableStat
-            label="過載人數"
+            label="負載示警"
             value={overload.length}
             color="text-red-500"
             hint={loads.length > 0 ? `占 ${Math.round((overload.length / loads.length) * 100)}%` : "尚無資料"}
@@ -202,9 +202,9 @@ export default function EmployeeLoadPage({ reports, handoffs, employees }: Props
         </Card>
       </div>
 
-      {/* 篩選結果 - 預設不顯示，點了才出來 */}
+      {/* 員工列表；未篩選時顯示全部，點統計卡或部門條可縮小範圍 */}
       <AnimatePresence>
-        {filter && filteredEmps && (
+        {filteredEmps && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -216,12 +216,14 @@ export default function EmployeeLoadPage({ reports, handoffs, employees }: Props
                 {filter === "overload" && <AlertTriangle size={16} className="text-red-500" />}
                 {filterTitle}
               </h3>
-              <button
-                onClick={() => setFilter(null)}
-                className="text-xs text-slate-400 hover:text-slate-700 flex items-center gap-1"
-              >
-                <X size={14} /> 取消篩選
-              </button>
+              {filter && (
+                <button
+                  onClick={() => setFilter(null)}
+                  className="text-xs text-slate-400 hover:text-slate-700 flex items-center gap-1"
+                >
+                  <X size={14} /> 取消篩選
+                </button>
+              )}
             </div>
 
             {filteredEmps.length === 0 ? (
@@ -243,14 +245,6 @@ export default function EmployeeLoadPage({ reports, handoffs, employees }: Props
         )}
       </AnimatePresence>
 
-      {/* 預設提示 - 沒選任何 filter 時顯示 */}
-      {!filter && (
-        <Card className="p-12 text-center bg-slate-50/50 border-dashed">
-          <div className="text-slate-400 text-sm mb-1">尚未選擇篩選條件</div>
-          <div className="text-slate-400 text-xs">點上方「過載人數 / 閒置人數」或部門條來查看員工</div>
-        </Card>
-      )}
-
       {/* 員工詳情 Modal */}
       <Modal
         open={!!selected}
@@ -265,7 +259,7 @@ export default function EmployeeLoadPage({ reports, handoffs, employees }: Props
               <span className="text-5xl font-black text-slate-900">{selected.loadScore.toFixed(1)}</span>
               <span className="text-sm text-slate-500">加權分數</span>
               <span className={cn("ml-auto px-3 py-1 rounded-full text-xs font-bold", LEVEL_STYLE[selected.level].bg, LEVEL_STYLE[selected.level].text)}>
-                P{selected.percentile} · {LEVEL_STYLE[selected.level].label}
+                P{selected.percentile} · {selected.zScore.toFixed(2)}σ · {LEVEL_STYLE[selected.level].label}
               </span>
             </div>
 
@@ -285,8 +279,8 @@ export default function EmployeeLoadPage({ reports, handoffs, employees }: Props
                 建議行動
               </div>
               <p className="text-xs text-slate-600 leading-relaxed">
-                {selected.level === "overload" && "建議盡快指派 backup 或重新分流，避免單點失敗。可安排 1-on-1 了解情況。"}
-                {selected.level === "high"     && "工作量較高，請主管留意。下週可詢問是否需要支援。"}
+                {selected.level === "overload" && "已達 3 個標準差以上，請馬上解決：指派 backup、重新分流，並安排主管 1-on-1 確認瓶頸。"}
+                {selected.level === "high"     && "已達 2 個標準差以上，需紅標示警。請主管留意並確認是否需要支援或分流。"}
                 {selected.level === "normal"   && "負荷在正常範圍內，維持目前節奏即可。"}
                 {selected.level === "low"      && "可接更多案件，或安排培訓/跨部門協作。"}
                 {selected.level === "idle"     && "本週沒有案件記錄。請確認是否需要重新分派工作。"}
@@ -333,7 +327,7 @@ function EmployeeCard({ emp, index, onClick, prevScore }: { emp: EL; index: numb
       onClick={onClick}
       className={cn(
         "text-left p-4 rounded-xl border transition-all bg-white",
-        emp.level === "overload" ? "border-red-200 hover:border-red-400 hover:shadow-md"
+        emp.sigmaLevel !== "normal" ? "border-red-200 hover:border-red-400 hover:shadow-md"
         : "border-slate-200/60 hover:border-slate-300 hover:shadow-sm",
       )}
     >
@@ -342,7 +336,7 @@ function EmployeeCard({ emp, index, onClick, prevScore }: { emp: EL; index: numb
           <div className="text-sm font-bold text-slate-900 truncate">{emp.name}</div>
           <div className="text-[11px] text-slate-500 truncate">{emp.role}</div>
         </div>
-        {emp.level === "overload" && (
+        {emp.sigmaLevel !== "normal" && (
           <AlertTriangle size={14} className="text-red-500 shrink-0" />
         )}
       </div>
@@ -358,7 +352,9 @@ function EmployeeCard({ emp, index, onClick, prevScore }: { emp: EL; index: numb
             {delta > 0 ? "↑" : "↓"} {Math.abs(delta).toFixed(1)}
           </span>
         )}
-        <span className="ml-auto text-[10px] text-slate-500 font-mono">P{emp.percentile}</span>
+        <span className={cn("ml-auto text-[10px] font-mono", emp.sigmaLevel !== "normal" ? "text-red-600 font-bold" : "text-slate-500")}>
+          P{emp.percentile} · {emp.zScore.toFixed(2)}σ
+        </span>
       </div>
 
       <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">

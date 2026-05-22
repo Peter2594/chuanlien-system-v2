@@ -32,7 +32,7 @@ function eventToTab(event: string): TabId | null {
   if (/卡點/.test(event)) return "analytics";
   if (/決策/.test(event)) return "decisions";
   if (/交接/.test(event)) return "handoff";
-  if (/過載|員工/.test(event)) return "employees";
+  if (/負載示警|員工/.test(event)) return "employees";
   if (/單向溝通|部門/.test(event) && !/未交週報/.test(event)) return "orgnetwork";
   if (/週報/.test(event)) return "report";
   return null;
@@ -93,18 +93,18 @@ function resolveEventItems(
         };
       });
   }
-  if (/員工過載|位員工/.test(event)) {
+  if (/員工負載示警|位員工/.test(event)) {
     // 傳 asOf 給 analyzeEmployeeLoad，依該時點計算時間衰減
     // 與 EmployeeLoad 頁、orgHealth snapshot 三邊一致
     const activeHandoffs = data.handoffs.filter((h) => new Date(h.createdAt) <= asOf);
     const loads = analyzeEmployeeLoad(data.reports, activeHandoffs, data.employees, asOf);
     return loads
-      .filter((l) => l.level === "overload")
+      .filter((l) => l.sigmaLevel === "warning" || l.sigmaLevel === "critical")
       .sort((a, b) => b.loadScore - a.loadScore)
       .map((l) => ({
         title: l.name,
         meta: `${l.dept} · ${l.role}`,
-        emphasis: `負載分 ${l.loadScore.toFixed(1)} · P${l.percentile}`,
+        emphasis: `負載分 ${l.loadScore.toFixed(1)} · P${l.percentile} · ${l.zScore.toFixed(2)}σ`,
       }));
   }
   if (/交接逾時/.test(event)) {
@@ -220,7 +220,7 @@ export function OrgHealthCard({
 
     const activeHandoffs = handoffs.filter((h) => new Date(h.createdAt) <= NOW);
     const overloaded = analyzeEmployeeLoad(reports, activeHandoffs, employees, NOW)
-      .filter((l) => l.level === "overload").length;
+      .filter((l) => l.sigmaLevel === "warning" || l.sigmaLevel === "critical").length;
 
     return {
       blockerHealth:      criticalBlockers > 0 ? `還有 ${criticalBlockers} 件嚴重卡點` : "卡點都在控制中",
