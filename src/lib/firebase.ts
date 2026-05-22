@@ -155,16 +155,19 @@ export const inferUserProfile = (email: string): UserProfile => {
   let role: string = ROLES.MEMBER;
   let dept = "未指定";
 
-  if (lower === "admin@test.com" || lower.startsWith("admin@")) {
+  if (lower === "admin@test.com") {
     role = ROLES.ADMIN;
     dept = "營運與管理層";
-  } else if (lower.startsWith("manager")) {
+  } else if (lower === "manager-research@test.com") {
     role = ROLES.MANAGER;
-    if (lower.includes("research")) dept = "投資研究部";
-    else if (lower.includes("biz")) dept = "業務開發部";
-    else if (lower.includes("asset")) dept = "資產管理部";
-    else dept = "未指定部門";
-  } else if (lower.startsWith("member")) {
+    dept = "投資研究部";
+  } else if (lower === "manager-biz@test.com") {
+    role = ROLES.MANAGER;
+    dept = "業務開發部";
+  } else if (lower === "manager-asset@test.com") {
+    role = ROLES.MANAGER;
+    dept = "資產管理部";
+  } else if (lower === "member@test.com") {
     role = ROLES.MEMBER;
     dept = "業務開發部";
   }

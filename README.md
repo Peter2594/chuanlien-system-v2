@@ -39,7 +39,7 @@ npm install
 
 # 2. (選用) 設定 Firebase 環境變數
 cp .env.example .env.local
-# 編輯 .env.local 填入 Firebase 設定，未設定會用 demo 預設
+# 編輯 .env.local 填入 Firebase 設定；未設定會快速失敗，避免誤連正式資料庫
 
 # 3. 啟動
 npm run dev
@@ -63,7 +63,7 @@ src/
 │  ├─ firebase.ts           # 認證 + Firestore CRUD
 │  ├─ types.ts              # TypeScript 型別
 │  ├─ algorithms.ts         # 員工負載 / 卡點分位數 / ORI
-│  ├─ historySearch.ts      # BM25F + n-gram + 同義詞 + Substring Boost
+│  ├─ historySearch.ts      # BM25F + n-gram + PMI 共現擴展 + Substring Boost
 │  ├─ seedData.ts           # 程序化產生 150 週報 / 79 交接
 │  ├─ constants.ts          # 部門 / 卡點類別 / 使用者
 │  └─ dateUtils.ts          # 週次工具
@@ -79,7 +79,7 @@ src/
    ├─ Handoff.tsx
    ├─ Decisions.tsx
    ├─ EmployeeLoad.tsx      # ★ 加權模型 + 詳情拆解
-   ├─ History.tsx           # ★ BM25F 全文檢索（含 n-gram、同義詞、Substring Boost）
+   ├─ History.tsx           # ★ BM25F 全文檢索（含 n-gram、PMI 共現、Substring Boost）
    ├─ BlockerAnalytics.tsx  # ★ 分位數風險面板
    ├─ OrgAnalytics.tsx      # SVG 部門互動網絡
    └─ MeetingPrep.tsx
@@ -110,7 +110,7 @@ k₁ = 1.5, b = 0.75  (Lucene 預設)
 ```
 
 - 中文 1/2/3-gram tokenize（解決中文無空格）
-- 同義詞合併（募資 / 融資 / fundraising）
+- PMI 共現擴展：從歷史資料自動學「常一起出現」的詞，不再維護寫死同義詞表
 - Substring Boost（中文無 stemming，前綴匹配補救）
 - 業界對標：Lucene / Elasticsearch / Notion 全文搜尋皆用 BM25 家族
 

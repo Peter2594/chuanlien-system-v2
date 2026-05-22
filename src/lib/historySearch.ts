@@ -1,59 +1,21 @@
 /**
  * 歷史案件搜尋演算法
  *
- * 採用 BM25F (Okapi BM25 with field weighting) + 多 n-gram + substring boost + 同義詞
+ * 採用 BM25F (Okapi BM25 with field weighting) + 多 n-gram + substring boost + PMI 共現擴展
  *
  * 為甚麼比原本的 TF-IDF cosine 準：
  *   1. BM25 的 TF 飽和函數比 cosine 的線性 TF 更接近人類認知 (出現 5 次和 50 次差距不大)
  *   2. BM25F 對標題 / 標籤 / 內文分別給權重，標題命中遠比內文命中重要
  *   3. 中文同時切 1-gram + 2-gram + 3-gram，proper noun (東京中央銀行) 被當完整詞抓
  *   4. 文件含 query 原始子字串時直接加 boost — 解決專有名詞被 n-gram 拆碎稀釋的問題
- *   5. 小型同義詞表處理金融/投資領域詞 (募資 ≈ 融資、盡調 ≈ DD、NDA ≈ 保密協議)
+ *   5. PMI 從歷史資料自動學詞彙關聯，不用維護寫死同義詞表
  */
 import type { HistoryCase } from "./types";
-
-// ===== 同義詞正規化 (查詢端和文件端都跑) =====
-const SYNONYM_GROUPS: string[][] = [
-  ["募資", "融資", "募款", "fundraising"],
-  ["盡調", "盡職調查", "due diligence", "dd"],
-  ["NDA", "保密協議", "保密"],
-  ["LOI", "意向書"],
-  ["估值", "valuation", "定價"],
-  ["退場", "exit", "出場"],
-  ["投委會", "投資委員會", "ic"],
-  ["董事會", "board"],
-  ["A 輪", "A輪", "series a"],
-  ["Pre-A", "PreA", "pre-a", "種子輪後"],
-  ["法遵", "compliance", "合規"],
-  ["稅務", "tax"],
-  ["風控", "風險管理", "risk"],
-  ["客戶", "client", "customer"],
-];
-
-const SYNONYM_MAP: Record<string, string> = (() => {
-  const m: Record<string, string> = {};
-  SYNONYM_GROUPS.forEach((group) => {
-    const canonical = group[0].toLowerCase();
-    group.forEach((term) => { m[term.toLowerCase()] = canonical; });
-  });
-  return m;
-})();
-
-function normalizeSynonyms(text: string): string {
-  let s = text.toLowerCase();
-  // 從長到短替換以避免子字串覆蓋
-  const keys = Object.keys(SYNONYM_MAP).sort((a, b) => b.length - a.length);
-  keys.forEach((k) => {
-    if (k.length < 2) return;
-    s = s.split(k).join(" " + SYNONYM_MAP[k] + " ");
-  });
-  return s;
-}
 
 // ===== Tokenizer：中文 1/2/3-gram + 英數詞 =====
 function tokenize(text: string): string[] {
   if (!text) return [];
-  const norm = normalizeSynonyms(String(text));
+  const norm = String(text).toLowerCase();
   const tokens: string[] = [];
 
   // 英數連續詞 (含底線、小數點不切)
@@ -120,6 +82,18 @@ interface SearchResult extends HistoryCase {
   matchedTerms: string[];
 }
 
+interface PmiAssociation {
+  term: string;
+  pmi: number;
+}
+
+const isAssociationCandidate = (term: string, docFreq: number, docCount: number) => {
+  if (term.length < 2) return false;
+  if (docFreq < 2) return false;
+  if (docFreq > docCount * 0.8) return false;
+  return true;
+};
+
 export function buildIndex(docs: HistoryCase[]) {
   const indexed: DocIndex[] = docs.map((item) => {
     const fields: any = {};
@@ -158,11 +132,45 @@ export function buildIndex(docs: HistoryCase[]) {
     idf[t] = Math.log(1 + (N - df[t] + 0.5) / (df[t] + 0.5));
   });
 
-  return { indexed, avgLen, idf };
+  // PMI 共現關聯：以「同一歷史案件內一起出現」作為共現事件。
+  // 查詢端用它做低權重 query expansion，例如搜「募資」時補入資料裡常共現的「估值 / 投委會」。
+  const coDoc: Record<string, Record<string, number>> = {};
+  indexed.forEach((d) => {
+    const terms = Array.from(new Set(
+      (Object.keys(FIELD_WEIGHTS) as FieldKey[])
+        .flatMap((f) => Object.keys(d.fields[f].tf))
+        .filter((t) => isAssociationCandidate(t, df[t] || 0, N)),
+    ));
+
+    for (let i = 0; i < terms.length; i++) {
+      const a = terms[i];
+      coDoc[a] ||= {};
+      for (let j = i + 1; j < terms.length; j++) {
+        const b = terms[j];
+        coDoc[b] ||= {};
+        coDoc[a][b] = (coDoc[a][b] || 0) + 1;
+        coDoc[b][a] = (coDoc[b][a] || 0) + 1;
+      }
+    }
+  });
+
+  const pmi: Record<string, PmiAssociation[]> = {};
+  Object.entries(coDoc).forEach(([a, partners]) => {
+    pmi[a] = Object.entries(partners)
+      .map(([b, co]) => ({
+        term: b,
+        pmi: Math.log2((co * N) / ((df[a] || 1) * (df[b] || 1))),
+      }))
+      .filter((x) => x.pmi >= 1)
+      .sort((x, y) => y.pmi - x.pmi)
+      .slice(0, 8);
+  });
+
+  return { indexed, avgLen, idf, pmi };
 }
 
 export function searchHistory(query: string, docs: HistoryCase[]): SearchResult[] {
-  const { indexed, avgLen, idf } = buildIndex(docs);
+  const { indexed, avgLen, idf, pmi } = buildIndex(docs);
 
   if (!query.trim()) {
     return docs.map((d) => ({ ...d, relevance: 100, matchedTerms: [] }));
@@ -173,13 +181,22 @@ export function searchHistory(query: string, docs: HistoryCase[]): SearchResult[
   // 過濾掉太短且 idf 為 0 的 1-gram noise (例：「的」「了」)
   const significantTokens = queryTokens.filter((t) => (idf[t] || 0) > 0.3);
   const effectiveTokens = significantTokens.length > 0 ? significantTokens : queryTokens;
+  const weightedTerms = new Map<string, { weight: number; source: "query" | "pmi"; from?: string }>();
+  effectiveTokens.forEach((t) => weightedTerms.set(t, { weight: 1, source: "query" }));
+  effectiveTokens.forEach((t) => {
+    (pmi[t] || []).forEach(({ term, pmi: score }) => {
+      if (weightedTerms.has(term)) return;
+      const expansionWeight = Math.min(0.45, 0.18 + score * 0.06);
+      weightedTerms.set(term, { weight: expansionWeight, source: "pmi", from: t });
+    });
+  });
 
   const scored = indexed.map((d) => {
     let score = 0;
     const contribs: { term: string; w: number }[] = [];
 
     // BM25F: 對每個欄位算 BM25 後加權求和
-    effectiveTokens.forEach((t) => {
+    weightedTerms.forEach(({ weight, source, from }, t) => {
       const tIdf = idf[t] || 0;
       if (tIdf === 0) return;
 
@@ -194,8 +211,8 @@ export function searchHistory(query: string, docs: HistoryCase[]): SearchResult[
         termFieldScore += FIELD_WEIGHTS[f] * tfNorm;
       });
 
-      const w = tIdf * termFieldScore;
-      if (w > 0) contribs.push({ term: t, w });
+      const w = tIdf * termFieldScore * weight;
+      if (w > 0) contribs.push({ term: source === "pmi" && from ? `${from}→${t}` : t, w });
       score += w;
     });
 
