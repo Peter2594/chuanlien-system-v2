@@ -150,7 +150,7 @@ export default function WhatIfPage({
     scenario.resolvedBlockerIds.size +
     scenario.expeditedDecisionIds.size +
     scenario.signedHandoffIds.size +
-    Object.values(scenario.loadRelief).filter((v) => v > 0).length;
+    Object.values(scenario.loadRelief).filter((v: number) => v > 0).length;
 
   const reset = () => setScenario({
     resolvedBlockerIds: new Set(),
@@ -403,7 +403,7 @@ export default function WhatIfPage({
               <div className="text-[11px] text-slate-500">模擬把案件/卡點轉出，並用同一批員工重算 Gini</div>
             </div>
             <span className="text-[10px] text-slate-400">
-              已調整 {Object.values(scenario.loadRelief).filter((v) => v > 0).length} 人
+              已調整 {Object.values(scenario.loadRelief).filter((v: number) => v > 0).length} 人
             </span>
           </div>
           <div className="space-y-3">

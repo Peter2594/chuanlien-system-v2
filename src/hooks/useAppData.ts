@@ -66,16 +66,18 @@ export function useAppData() {
           fetchDocumentCollection<HistoryCase>("history", SEED_HISTORY),
         ]);
 
-        // 偵測「明顯壞掉的」舊版 / 空資料才重置，保護使用者實際輸入
-        // 規則: 含舊「第 N 週」格式 OR 完全空 (< 10 筆)
+        // 偵測「明顯壞掉的舊版格式」才重置。
+        // 之前的「少於 10 筆 → 換 SEED」會把小團隊的真實資料整批蓋掉，
+        // 而 syncCollection 又會把 SEED 寫回 Firestore — 等同資料災難。
+        // 現在改為：只有「完全空」才補 SEED，「有資料但少」尊重使用者輸入。
         const hasOldFormat = (r || []).some((x: any) => /第\s*\d+\s*週/.test(String(x.week || "")));
-        const reportsEmpty = (r || []).length < 10;
-        const handoffsEmpty = (h || []).length < 10;
+        const reportsEmpty = (r || []).length === 0;
+        const handoffsEmpty = (h || []).length === 0;
         const finalReports   = (hasOldFormat || reportsEmpty) ? SEED_REPORTS : r;
         const finalHandoffs  = handoffsEmpty ? SEED_HANDOFFS : h;
         const finalBlockers  = (b || []).length === 0  ? SEED_BLOCKERS : b;
-        const finalHistory   = (hist || []).length < 5 ? SEED_HISTORY  : hist;
-        const finalMeetings  = (mh || []).length < 5   ? SEED_MEETING_HISTORY : mh;
+        const finalHistory   = (hist || []).length === 0 ? SEED_HISTORY  : hist;
+        const finalMeetings  = (mh || []).length === 0   ? SEED_MEETING_HISTORY : mh;
 
         // 員工 / 決策只在「空」時補進 SEED (避免覆蓋使用者編輯)
         const finalEmployees = (emp || []).length === 0 ? SEED_EMPLOYEES : emp;

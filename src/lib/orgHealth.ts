@@ -111,10 +111,18 @@ export function computeHealthSnapshot(
   });
 
   // ===== 1. 卡點健康 =====
+  // 修正：歷史快照不能用「現在的 status」判斷已解決，
+  // 否則回看過去週次時，今天才解決的卡點會被誤判為當時就已解決，
+  // 趨勢圖會比真實情況漂亮。改用「resolvedAt 是否在 asOf 之前」判斷。
   let blockerHealth = 100;
   if (activeBlockers.length > 0) {
+    const wasUnresolvedAt = (b: Blocker) => {
+      if (b.status !== "resolved") return true;                    // 目前還沒解 → 一直未解
+      if (!b.resolvedAt) return true;                              // 解了但沒紀錄時間 → 保守當未解
+      return new Date(b.resolvedAt) > asOf;                        // 解決時間在 asOf 之後 → 當時還沒解
+    };
     const analyses = activeBlockers
-      .filter((b) => b.status !== "resolved")
+      .filter(wasUnresolvedAt)
       .map((b) => analyzeBlockerRecord(b, blockers, history, asOf));
     const p95 = analyses.filter((a) => a.level === "critical").length;
     const p90 = analyses.filter((a) => a.level === "high").length;

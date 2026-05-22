@@ -17,7 +17,7 @@
 | 亮點演算法 | 解決什麼 | 競品做不到的 |
 |---|---|---|
 | **加權員工負載**（Andy Grove × 時間衰減 × Gini） | 找出「被高度依賴的單點失敗節點」 | Notion / Asana 只看任務數 |
-| **TF-IDF + Cosine Similarity 歷史檢索** | 把過去案件變可搜尋的組織記憶 | LINE / Email 散落無法檢索 |
+| **BM25F + 中文 n-gram 歷史檢索** | 把過去案件變可搜尋的組織記憶 | LINE / Email 散落無法檢索 |
 | **卡點經驗百分位** | 用同類歷史推算「拖太久」 | SLA 太死板，不貼真實 |
 
 ---
@@ -62,7 +62,8 @@ src/
 ├─ lib/
 │  ├─ firebase.ts           # 認證 + Firestore CRUD
 │  ├─ types.ts              # TypeScript 型別
-│  ├─ algorithms.ts         # 員工負載 / 卡點分位數 / TF-IDF / ORI
+│  ├─ algorithms.ts         # 員工負載 / 卡點分位數 / ORI
+│  ├─ historySearch.ts      # BM25F + n-gram + 同義詞 + Substring Boost
 │  ├─ seedData.ts           # 程序化產生 150 週報 / 79 交接
 │  ├─ constants.ts          # 部門 / 卡點類別 / 使用者
 │  └─ dateUtils.ts          # 週次工具
@@ -78,7 +79,7 @@ src/
    ├─ Handoff.tsx
    ├─ Decisions.tsx
    ├─ EmployeeLoad.tsx      # ★ 加權模型 + 詳情拆解
-   ├─ History.tsx           # ★ TF-IDF 全文檢索
+   ├─ History.tsx           # ★ BM25F 全文檢索（含 n-gram、同義詞、Substring Boost）
    ├─ BlockerAnalytics.tsx  # ★ 分位數風險面板
    ├─ OrgAnalytics.tsx      # SVG 部門互動網絡
    ├─ MeetingPrep.tsx
@@ -101,16 +102,18 @@ W_total = Σ (decay × complexity)  +  blocker × 2.5
 - 複雜度權重：跨部門 ×1.5 / 卡點相關 ×2.0
 - 分位數比較：個人 vs 全公司分布
 
-### 2. TF-IDF + Cosine Similarity
+### 2. BM25F + 中文特化
 
 ```
-IDF(t) = log((N+1) / (df(t)+1)) + 1
-sim(q, d) = (q · d) / (||q|| × ||d||)
+score = Σ_f w_f · IDF(t) · TF(t,f) / (TF(t,f) + k₁(1 − b + b·dl/avgdl))
+k₁ = 1.5, b = 0.75  (Lucene 預設)
+欄位權重 w_f：標題 5 / 標籤 4 / 摘要 2 / 結論 1.5 / 負責人 1 / 內文 1
 ```
 
-- 中英混合 tokenize（2-gram + 英數連續）
-- 加權序列化：標題 ×3 / tags ×2 / 其他內文 ×1
-- 顯示 HIGH-IDF 切詞 + match terms（演算法透明度）
+- 中文 1/2/3-gram tokenize（解決中文無空格）
+- 同義詞合併（募資 / 融資 / fundraising）
+- Substring Boost（中文無 stemming，前綴匹配補救）
+- 業界對標：Lucene / Elasticsearch / Notion 全文搜尋皆用 BM25 家族
 
 ### 3. 卡點經驗百分位
 

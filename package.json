@@ -8,7 +8,10 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "validate:load": "tsx scripts/employee_load_validation.ts",
+    "calibrate:load": "tsx scripts/employee_load_calibration.ts",
+    "validate:params": "tsx scripts/parameter_tuning_validation.ts"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

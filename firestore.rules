@@ -1,0 +1,84 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 通用：必須登入
+    function isAuthed() {
+      return request.auth != null;
+    }
+
+    // 從 Email 推斷角色（跟 src/lib/firebase.ts inferUserProfile 同邏輯）
+    function emailLower() {
+      return request.auth.token.email.lower();
+    }
+    function isAdmin() {
+      return isAuthed() && (
+        emailLower() == 'admin@test.com'
+        || emailLower().matches('^admin@.*')
+      );
+    }
+    function isManager() {
+      return isAuthed() && emailLower().matches('^manager-.*');
+    }
+
+    // 公司 namespace
+    match /companies/{companyId}/{document=**} {
+      // 預設：拒絕
+      allow read, write: if false;
+    }
+
+    // ── 每個 collection 個別規則（namespace = companies/chuanlien/...）──
+    match /companies/{companyId} {
+
+      // 部門設定：admin 可改，其他人可讀
+      match /departments/{deptId} {
+        allow read: if isAuthed();
+        allow write: if isAdmin();
+      }
+
+      // 員工資料：admin 可改，其他人可讀
+      match /employees/{empId} {
+        allow read: if isAuthed();
+        allow write: if isAdmin();
+      }
+
+      // 週報：作者本人或 manager / admin 可寫
+      match /reports/{reportId} {
+        allow read: if isAuthed();
+        allow create: if isAuthed();
+        allow update, delete: if isAdmin() || isManager()
+          || (resource.data.authorEmail == request.auth.token.email);
+      }
+
+      // 交接：sender / receiver / manager / admin 可改
+      match /handoffs/{handoffId} {
+        allow read: if isAuthed();
+        allow create: if isAuthed();
+        allow update, delete: if isAdmin() || isManager();
+      }
+
+      // 決策：admin / manager 可改
+      match /decisions/{decisionId} {
+        allow read: if isAuthed();
+        allow write: if isAdmin() || isManager();
+      }
+
+      // 卡點：authenticated 可建立 / 更新
+      match /blockers/{blockerId} {
+        allow read: if isAuthed();
+        allow create, update: if isAuthed();
+        allow delete: if isAdmin() || isManager();
+      }
+
+      // 歷史案件、快照：只能讀，由背景或 admin 寫
+      match /history/{caseId} {
+        allow read: if isAuthed();
+        allow write: if isAdmin();
+      }
+      match /snapshots/{snapId} {
+        allow read: if isAuthed();
+        allow write: if isAdmin();
+      }
+    }
+  }
+}

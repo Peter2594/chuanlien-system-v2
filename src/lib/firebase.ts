@@ -20,13 +20,27 @@ import {
   writeBatch,
 } from "firebase/firestore";
 
+// 從 Vite 環境變數讀 — 拿不到就快速失敗，不再 fallback 到真實 project
+// 防止公開 repo 自動連到生產資料庫
+function requireEnv(key: string): string {
+  const v = import.meta.env[key];
+  if (!v) {
+    throw new Error(
+      `[firebase] Missing env: ${key}. ` +
+      `請在 .env 或部署平台設定 VITE_FIREBASE_* 變數。` +
+      `參考 .env.example。`,
+    );
+  }
+  return v as string;
+}
+
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyCmpjx_6dPQtGfubTFcYZOpNpDVJD0-LwU",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "chuanlien-system.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "chuanlien-system",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "chuanlien-system.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "535615404579",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:535615404579:web:6df27827b85c7af65f0f96",
+  apiKey:            requireEnv("VITE_FIREBASE_API_KEY"),
+  authDomain:        requireEnv("VITE_FIREBASE_AUTH_DOMAIN"),
+  projectId:         requireEnv("VITE_FIREBASE_PROJECT_ID"),
+  storageBucket:     requireEnv("VITE_FIREBASE_STORAGE_BUCKET"),
+  messagingSenderId: requireEnv("VITE_FIREBASE_MESSAGING_SENDER_ID"),
+  appId:             requireEnv("VITE_FIREBASE_APP_ID"),
 };
 
 const app = initializeApp(firebaseConfig);
