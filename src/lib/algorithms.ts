@@ -278,7 +278,7 @@ export function analyzeBlockerRecord(
     return {
       blocker, originalText: blocker.title, currentDays,
       level: currentDays > 21 ? "high" : currentDays > 14 ? "medium" : "normal",
-      levelLabel: currentDays > 21 ? "高風險" : currentDays > 14 ? "關注" : "正常",
+      levelLabel: currentDays > 21 ? "SLA逾期" : currentDays > 14 ? "SLA關注" : "正常",
       hasData: false, percentile: null, p75: 0, p90: 0, p95: 0,
       meanDays: 0, stdDevDays: 0, zScore: 0, sigmaLevel: "normal" as const,
       categoryInfo: BLOCKER_CATEGORIES.find((c) => c.key === blocker.category) || BLOCKER_CATEGORIES[BLOCKER_CATEGORIES.length - 1],
@@ -298,12 +298,10 @@ export function analyzeBlockerRecord(
 
   let level: "critical" | "high" | "medium" | "normal" = "normal";
   let levelLabel = "正常";
-  if (currentDays >= p95) { level = "critical"; levelLabel = "極高風險"; }
-  else if (currentDays >= p90) { level = "high"; levelLabel = "高風險"; }
-  else if (currentDays >= p75) { level = "medium"; levelLabel = "關注"; }
+  if (currentDays >= p75) { level = "medium"; levelLabel = "P75關注"; }
 
   if (sigmaLevel === "critical") { level = "critical"; levelLabel = "3σ立即處理"; }
-  else if (sigmaLevel === "warning") { level = "high"; levelLabel = "2σ警示"; }
+  else if (sigmaLevel === "warning") { level = "high"; levelLabel = "2σ紅標示警"; }
 
   return {
     blocker, originalText: blocker.title, currentDays,
@@ -435,9 +433,9 @@ export function computeORI({
   if (activeBlockers.length > 0) {
     const percentiles = activeBlockers.map((b) => b.percentile || 0).filter((p) => p > 0);
     const avgP = percentiles.length ? percentiles.reduce((s, v) => s + v, 0) / percentiles.length : 50;
-    const p90 = activeBlockers.filter((b) => (b.percentile || 0) >= 90).length;
-    const p95 = activeBlockers.filter((b) => (b.percentile || 0) >= 95).length;
-    BT = clamp(100 + (avgP - 50) * 1.5 + p90 * 8 + p95 * 12);
+    const warningSigma = activeBlockers.filter((b) => b.sigmaLevel === "warning").length;
+    const criticalSigma = activeBlockers.filter((b) => b.sigmaLevel === "critical").length;
+    BT = clamp(100 + (avgP - 50) * 1.2 + warningSigma * 10 + criticalSigma * 18);
   }
 
   // CDC
