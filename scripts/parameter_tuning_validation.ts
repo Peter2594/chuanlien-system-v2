@@ -50,7 +50,7 @@ function validateEmployeeLoad() {
     acc[x.level] = (acc[x.level] || 0) + 1;
     return acc;
   }, {});
-  line("INFO", "負荷等級分布", JSON.stringify(levels), "用 percentile 補強小樣本下的絕對門檻");
+  line("INFO", "負荷等級分布", JSON.stringify(levels), "2σ 紅標示警，3σ 以上標記為馬上解決");
 
   const stability = [
     ["±10%", "Top-3 99.4%, Top-5 99.2%, rho 0.998"],

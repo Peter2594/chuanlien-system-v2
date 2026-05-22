@@ -57,7 +57,7 @@ export function computeLoadBalanceScore(loads: LoadScoreLike[]): LoadBalanceBrea
   const n = scores.length;
   const gini = scores.reduce((s, v, i) => s + (2 * (i + 1) - n - 1) * v, 0) / (n * total);
   const mean = total / n;
-  const variance = scores.reduce((s, v) => s + (v - mean) ** 2, 0) / n;
+  const variance = n > 1 ? scores.reduce((s, v) => s + (v - mean) ** 2, 0) / (n - 1) : 0;
   const stdDev = Math.sqrt(variance);
   const zScores = scores.map((v) => stdDev > 0 ? (v - mean) / stdDev : 0);
   const twoSigmaCount = zScores.filter((z) => z >= 2 && z < 3).length;
@@ -173,7 +173,7 @@ export function computeHealthSnapshot(
   if (loads.length > 0) {
     const loadBalanceStats = computeLoadBalanceScore(loads);
     loadBalance = loadBalanceStats.score;
-    if (loadBalanceStats.overloadCount > 0) events.push(`${loadBalanceStats.overloadCount} 位員工過載`);
+    if (loadBalanceStats.overloadCount > 0) events.push(`${loadBalanceStats.overloadCount} 位員工負載示警`);
   }
 
   // ===== 5. 部門協作 =====

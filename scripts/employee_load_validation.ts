@@ -298,7 +298,7 @@ function printSensitivity() {
   });
 
   console.log();
-  console.log("判讀：若 ±10% 仍高度穩定，代表 2.0 改成 1.8/2.2 並不會推翻 Top 過載判斷。");
+  console.log("判讀：若 ±10% 仍高度穩定，代表 2.0 改成 1.8/2.2 並不會推翻 Top 負載示警判斷。");
   console.log();
 }
 

@@ -81,6 +81,8 @@ export const stats = {
 export interface EmployeeLoad extends Employee {
   loadScore: number;
   percentile: number;
+  zScore: number;
+  sigmaLevel: "critical" | "warning" | "normal";
   level: "overload" | "high" | "normal" | "low" | "idle";
   hasReport: boolean;
   caseCount: number;
@@ -196,17 +198,23 @@ export function analyzeEmployeeLoad(
   });
 
   const allScores = scores.map((s) => s.loadScore).sort((a, b) => a - b);
+  const mean = stats.mean(allScores);
+  const std = stats.std(allScores);
   return scores
     .map((s) => {
       const rank = allScores.findIndex((v) => v >= s.loadScore);
-      const percentile = allScores.length > 1 ? Math.round((rank / (allScores.length - 1)) * 100) : 50;
+      const rawPercentile = allScores.length > 1 ? Math.round((rank / (allScores.length - 1)) * 100) : 50;
+      const percentile = Math.min(99, rawPercentile);
+      const zScore = std > 0 ? +((s.loadScore - mean) / std).toFixed(2) : 0;
+      const sigmaLevel: EmployeeLoad["sigmaLevel"] =
+        zScore >= 3 ? "critical" : zScore >= 2 ? "warning" : "normal";
       let level: EmployeeLoad["level"];
-      if (s.loadScore >= 25 || percentile >= 90) level = "overload";
-      else if (s.loadScore >= 15 || percentile >= 75) level = "high";
+      if (sigmaLevel === "critical") level = "overload";
+      else if (sigmaLevel === "warning") level = "high";
       else if (s.loadScore >= 6) level = "normal";
       else if (s.loadScore >= 1) level = "low";
       else level = "idle";
-      return { ...s, percentile, level } as EmployeeLoad;
+      return { ...s, percentile, zScore, sigmaLevel, level } as EmployeeLoad;
     })
     .sort((a, b) => b.loadScore - a.loadScore);
 }
