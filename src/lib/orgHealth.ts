@@ -10,7 +10,7 @@
  *   - 負載均衡 (Load Balance):      Gini、過載人數、Top1 占比、P90/P50 複合警示
  *   - 部門協作 (Cross-Dept):        雙向 mention 對稱 = 越健康
  */
-import { NOW } from "./dateUtils";
+import { NOW, getISOWeek } from "./dateUtils";
 import type { Report, Handoff, Decision, Blocker, Employee, Department, HistoryCase } from "./types";
 import { analyzeEmployeeLoad, analyzeBlockerRecord, analyzeDeptNetwork, isDecisionOverdueAt, isDecisionCompletedAt } from "./algorithms";
 
@@ -92,7 +92,7 @@ export function computeHealthSnapshot(
   departments: Department[],
   history: HistoryCase[] = [],
 ): HealthSnapshot {
-  const weekISO = `${asOf.getFullYear()}-W${Math.ceil(((+asOf - +new Date(asOf.getFullYear(), 0, 1)) / 86400000 + 1) / 7)}`;
+  const weekISO = `${asOf.getFullYear()}-W${getISOWeek(asOf)}`;
   const events: string[] = [];
 
   // 「截至 asOf」的活躍 / 已發生資料

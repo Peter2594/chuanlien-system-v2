@@ -213,7 +213,7 @@ export function analyzeEmployeeLoad(
 
 // ===== 卡點分位數風險分析 =====
 // 從歷史案件抽出「解決天數」：標籤含類別關鍵字 → 同類；否則進整體池
-const extractDays = (outcome?: string) => {
+export const extractDays = (outcome?: string) => {
   const m = String(outcome || "").match(/(\d+)\s*天/);
   return m ? parseInt(m[1]) : 0;
 };

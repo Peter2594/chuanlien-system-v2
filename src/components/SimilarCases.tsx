@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { Sparkles, ChevronRight, Clock, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { searchHistory } from "../lib/historySearch";
+import { extractDays } from "../lib/algorithms";
 import { cn } from "../lib/utils";
 import type { HistoryCase } from "../lib/types";
 
@@ -15,11 +16,6 @@ interface Props {
   limit?: number;
   variant?: "card" | "inline";   // card: 卡片包覆 / inline: 嵌入展開區
 }
-
-const extractDays = (outcome?: string) => {
-  const m = String(outcome || "").match(/(\d+)\s*天/);
-  return m ? parseInt(m[1]) : 0;
-};
 
 export function SimilarCases({ query, history, limit = 3, variant = "card" }: Props) {
   const [viewCase, setViewCase] = useState<HistoryCase | null>(null);

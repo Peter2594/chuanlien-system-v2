@@ -3,6 +3,7 @@ import { Search, ChevronDown, X, Sparkles, Clock, TrendingUp } from "lucide-reac
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "../lib/utils";
 import { searchHistory } from "../lib/historySearch";
+import { extractDays } from "../lib/algorithms";
 import type { HistoryCase } from "../lib/types";
 
 interface Props {
@@ -21,11 +22,6 @@ const CATEGORY_COLOR: Record<string, { bg: string; text: string; ring: string }>
 
 const getCategoryFromTags = (tags: string[]): string | null => {
   return tags.find((t) => CATEGORY_COLOR[t]) || null;
-};
-
-const extractDays = (outcome?: string): number => {
-  const m = String(outcome || "").match(/(\d+)\s*天/);
-  return m ? parseInt(m[1]) : 0;
 };
 
 export default function HistoryPage({ history }: Props) {
