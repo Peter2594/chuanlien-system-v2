@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   fetchDocumentCollection,
   saveDocumentCollection,
@@ -97,6 +97,9 @@ export function useAppData() {
         setMeetingHistory(finalMeetings);
         setHistory(finalHistory);
         setSyncStatus("idle");
+        // 載入成功後，用 setTimeout 確保所有 React effects 跑完再開放 sync，
+        // 避免初始載入 → SEED 資料被 sync 回 Firestore。
+        setTimeout(() => { syncEnabled.current = true; }, 0);
       } catch (err) {
         console.error("Firebase load failed:", err);
         setSyncStatus("error");
@@ -106,13 +109,17 @@ export function useAppData() {
     })();
   }, [authUser]);
 
-  // 自動同步 helper
+  // 防止初始載入時把 SEED 資料寫回 Firestore：
+  // dataLoaded 從 false→true 時，syncCollection ref 改變 → 觸發所有 sync useEffect。
+  // 用 syncEnabled ref（setTimeout 在 effects 之後才設 true）擋住這一輪。
+  const syncEnabled = useRef(false);
+
   const syncCollection = useCallback(async <T extends { id?: string }>(name: string, value: T[]) => {
-    if (!dataLoaded || !authUser) return;
+    if (!syncEnabled.current || !authUser) return;
     setSyncStatus("syncing");
     const ok = await saveDocumentCollection(name, value);
     setSyncStatus(ok ? "idle" : "error");
-  }, [dataLoaded, authUser]);
+  }, [authUser]);
 
   useEffect(() => { syncCollection("reports", reports);     }, [reports, syncCollection]);
   useEffect(() => { syncCollection("handoffs", handoffs);   }, [handoffs, syncCollection]);

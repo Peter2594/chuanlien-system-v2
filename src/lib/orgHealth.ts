@@ -118,7 +118,12 @@ export function computeHealthSnapshot(
   if (activeBlockers.length > 0) {
     const wasUnresolvedAt = (b: Blocker) => {
       if (b.status !== "resolved") return true;                    // 目前還沒解 → 一直未解
-      if (!b.resolvedAt) return true;                              // 解了但沒紀錄時間 → 保守當未解
+      if (!b.resolvedAt) {
+        // 沒有 resolvedAt（通常是 SEED 資料）→ 用 createdAt + 14 天估算解決時間
+        if (!b.createdAt) return true;
+        const estimate = new Date(+new Date(b.createdAt) + 14 * 86400000);
+        return estimate > asOf;
+      }
       return new Date(b.resolvedAt) > asOf;                        // 解決時間在 asOf 之後 → 當時還沒解
     };
     const analyses = activeBlockers

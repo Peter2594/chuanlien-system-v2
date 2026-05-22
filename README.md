@@ -82,8 +82,7 @@ src/
    ├─ History.tsx           # ★ BM25F 全文檢索（含 n-gram、同義詞、Substring Boost）
    ├─ BlockerAnalytics.tsx  # ★ 分位數風險面板
    ├─ OrgAnalytics.tsx      # SVG 部門互動網絡
-   ├─ MeetingPrep.tsx
-   └─ LineBot.tsx
+   └─ MeetingPrep.tsx
 ```
 
 ---
@@ -143,8 +142,8 @@ ORI = 0.35·HCC + 0.25·DL + 0.25·BT + 0.15·CDC
 | 角色 | 可看模組 |
 |---|---|
 | **admin** (管理層) | 全部 10 個分頁 |
-| **manager** (部門主管) | 8 個（除員工負載、組織分析、會議準備） |
-| **member** (一般員工) | 4 個（Dashboard、週報、交接、LINE Bot） |
+| **manager** (部門主管) | 7 個（除員工負載、組織分析、會議準備） |
+| **member** (一般員工) | 3 個（Dashboard、週報、交接） |
 
 ---
 
