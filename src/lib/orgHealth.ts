@@ -7,7 +7,7 @@
  *   - 卡點健康 (Blocker Health):    P95+ 卡點越少 + 平均 percentile 越低 = 越健康
  *   - 決策及時 (Decision Timeliness): 逾期決策少 + 已完成決策快 = 越健康
  *   - 交接流暢 (Handoff Smoothness): 待簽收逾時少 + 完成率高 = 越健康
- *   - 負載均衡 (Load Balance):      Gini、過載人數、Top1 占比、P90/P50 複合警示
+ *   - 負載均衡 (Load Balance):      Gini、2σ/3σ 異常值、Top1 占比複合警示
  *   - 部門協作 (Cross-Dept):        雙向 mention 對稱 = 越健康
  */
 import { NOW, getISOWeek } from "./dateUtils";
@@ -36,49 +36,52 @@ export interface LoadBalanceBreakdown {
   gini: number;
   overloadCount: number;
   top1Share: number;
-  p90p50Ratio: number;
-}
-
-function percentile(sorted: number[], p: number): number {
-  if (!sorted.length) return 0;
-  const idx = (sorted.length - 1) * (p / 100);
-  const lo = Math.floor(idx);
-  const hi = Math.ceil(idx);
-  if (lo === hi) return sorted[lo];
-  return sorted[lo] * (hi - idx) + sorted[hi] * (idx - lo);
+  mean: number;
+  stdDev: number;
+  twoSigmaCount: number;
+  threeSigmaCount: number;
+  maxZScore: number;
 }
 
 export function computeLoadBalanceScore(loads: LoadScoreLike[]): LoadBalanceBreakdown {
   if (!loads.length) {
-    return { score: 100, gini: 0, overloadCount: 0, top1Share: 0, p90p50Ratio: 1 };
+    return { score: 100, gini: 0, overloadCount: 0, top1Share: 0, mean: 0, stdDev: 0, twoSigmaCount: 0, threeSigmaCount: 0, maxZScore: 0 };
   }
 
   const scores = loads.map((l) => Math.max(0, l.loadScore)).sort((a, b) => a - b);
   const total = scores.reduce((s, v) => s + v, 0);
   if (total <= 0) {
-    return { score: 100, gini: 0, overloadCount: 0, top1Share: 0, p90p50Ratio: 1 };
+    return { score: 100, gini: 0, overloadCount: 0, top1Share: 0, mean: 0, stdDev: 0, twoSigmaCount: 0, threeSigmaCount: 0, maxZScore: 0 };
   }
 
   const n = scores.length;
   const gini = scores.reduce((s, v, i) => s + (2 * (i + 1) - n - 1) * v, 0) / (n * total);
-  const overloadCount = loads.filter((l) => l.loadScore >= 25).length;
+  const mean = total / n;
+  const variance = scores.reduce((s, v) => s + (v - mean) ** 2, 0) / n;
+  const stdDev = Math.sqrt(variance);
+  const zScores = scores.map((v) => stdDev > 0 ? (v - mean) / stdDev : 0);
+  const twoSigmaCount = zScores.filter((z) => z >= 2 && z < 3).length;
+  const threeSigmaCount = zScores.filter((z) => z >= 3).length;
+  const overloadCount = twoSigmaCount + threeSigmaCount;
+  const maxZScore = Math.max(...zScores, 0);
   const top1Share = scores[n - 1] / total;
-  const p50 = percentile(scores, 50);
-  const p90 = percentile(scores, 90);
-  const p90p50Ratio = p50 > 0 ? p90 / p50 : p90 > 0 ? 3 : 1;
 
   const giniPenalty = Math.max(0, gini - 0.35) * 120;
-  const overloadPenalty = overloadCount * 8;
+  const overloadPenalty = twoSigmaCount * 8 + threeSigmaCount * 16;
   const topSharePenalty = Math.max(0, top1Share - 0.25) * 80;
-  const p90p50Penalty = Math.max(0, p90p50Ratio - 2) * 8;
-  const score = clamp(100 - giniPenalty - overloadPenalty - topSharePenalty - p90p50Penalty);
+  const sigmaSeverityPenalty = Math.max(0, maxZScore - 2) * 6;
+  const score = clamp(100 - giniPenalty - overloadPenalty - topSharePenalty - sigmaSeverityPenalty);
 
   return {
     score: +score.toFixed(1),
     gini: +gini.toFixed(3),
     overloadCount,
     top1Share: +top1Share.toFixed(3),
-    p90p50Ratio: +p90p50Ratio.toFixed(2),
+    mean: +mean.toFixed(2),
+    stdDev: +stdDev.toFixed(2),
+    twoSigmaCount,
+    threeSigmaCount,
+    maxZScore: +maxZScore.toFixed(2),
   };
 }
 
@@ -164,7 +167,7 @@ export function computeHealthSnapshot(
 
   // ===== 4. 負載均衡 =====
   // analyzeEmployeeLoad 接 asOf 參數，依該時點計算時間衰減。
-  // Gini 只作為離散程度警示之一，需搭配過載人數、Top1 占比與 P90/P50 判讀。
+  // Gini 只作為離散程度警示之一，需搭配 2σ/3σ 異常值與 Top1 占比判讀。
   let loadBalance = 100;
   const loads = analyzeEmployeeLoad(reports, activeHandoffs, employees, asOf);
   if (loads.length > 0) {

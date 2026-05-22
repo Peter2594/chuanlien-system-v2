@@ -99,14 +99,13 @@ function validateBlockerParameters() {
 }
 
 function validateOrgHealthWeights() {
-  console.log("\n=== 4) Org Health 6 維權重 ===");
+  console.log("\n=== 4) Org Health 5 維權重 ===");
   const weights = {
-    blockerHealth: 0.22,
-    decisionTimeliness: 0.18,
-    handoffSmoothness: 0.15,
-    loadBalance: 0.18,
-    crossDept: 0.12,
-    reportQuality: 0.15,
+    blockerHealth: 0.26,
+    decisionTimeliness: 0.21,
+    handoffSmoothness: 0.18,
+    loadBalance: 0.21,
+    crossDept: 0.14,
   };
   const sum = Object.values(weights).reduce((s, v) => s + v, 0);
   line(near(sum, 1, 0.0001) ? "PASS" : "WARN", "權重總和", sum.toFixed(2), "滿分/零分邊界可維持 100/0");
@@ -121,7 +120,7 @@ function validateOrgHealthWeights() {
     SEED_DEPARTMENTS,
     SEED_HISTORY,
   );
-  line("PASS", "Seed 整體健康度", `${snapshot.overall}`, `卡點=${snapshot.blockerHealth}, 負載=${snapshot.loadBalance}, 週報=${snapshot.reportQuality}`);
+  line("PASS", "Seed 整體健康度", `${snapshot.overall}`, `卡點=${snapshot.blockerHealth}, 負載=${snapshot.loadBalance}, 協作=${snapshot.crossDept}`);
 
   const messy = {
     blockerHealth: 21,
@@ -129,24 +128,27 @@ function validateOrgHealthWeights() {
     handoffSmoothness: 75,
     loadBalance: 55,
     crossDept: 85,
-    reportQuality: 100,
   };
-  const equalAvg = Object.values(messy).reduce((s, v) => s + v, 0) / 6;
+  const equalAvg = Object.values(messy).reduce((s, v) => s + v, 0) / 5;
   const weighted =
     messy.blockerHealth * weights.blockerHealth +
     messy.decisionTimeliness * weights.decisionTimeliness +
     messy.handoffSmoothness * weights.handoffSmoothness +
     messy.loadBalance * weights.loadBalance +
-    messy.crossDept * weights.crossDept +
-    messy.reportQuality * weights.reportQuality;
-  line(weighted < equalAvg ? "PASS" : "WARN", "差異化權重效果", `平均=${equalAvg.toFixed(1)}, 加權=${weighted.toFixed(1)}`, "卡點差時不會被週報滿分過度拉高");
+    messy.crossDept * weights.crossDept;
+  line(weighted < equalAvg ? "PASS" : "WARN", "差異化權重效果", `平均=${equalAvg.toFixed(1)}, 加權=${weighted.toFixed(1)}`, "卡點差時不會被其他維度過度拉高");
 }
 
 function validateLoadBalanceAndNetwork() {
   console.log("\n=== 5) Gini / 部門單向溝通 ===");
   const loads = analyzeEmployeeLoad(SEED_REPORTS, SEED_HANDOFFS, SEED_EMPLOYEES, NOW);
   const balance = computeLoadBalanceScore(loads);
-  line("PASS", "負載均衡分數", `score=${balance.score}, gini=${balance.gini}, top1=${balance.top1Share}`, "Gini 0.35 只作為離散警示之一");
+  line(
+    "PASS",
+    "負載均衡分數",
+    `score=${balance.score}, gini=${balance.gini}, top1=${balance.top1Share}, 2σ=${balance.twoSigmaCount}, 3σ=${balance.threeSigmaCount}`,
+    "Gini 0.35 只作為離散警示之一，異常值改用 2σ/3σ",
+  );
 
   const network = analyzeDeptNetwork(SEED_REPORTS, SEED_DEPARTMENTS, SEED_HANDOFFS);
   const seedThresholds = [3, 5, 10].map((threshold) => {

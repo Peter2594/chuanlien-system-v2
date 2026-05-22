@@ -28,7 +28,7 @@ export default function HistoryPage({ history }: Props) {
   const [q, setQ] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // BM25F + n-gram + 同義詞 + substring boost
+  // BM25F + n-gram + PMI 共現擴展 + substring boost
   const results = useMemo(() => searchHistory(q, history), [q, history]);
 
   // 整體統計
