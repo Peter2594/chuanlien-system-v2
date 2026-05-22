@@ -322,7 +322,7 @@ export default function WhatIfPage({
                   key={blocker.id}
                   checked={checked}
                   title={blocker.title}
-                  meta={`${blocker.dept} · ${ana.levelLabel}`}
+                  meta={`${blocker.dept} · ${ana.levelLabel} · P${ana.percentile ?? "-"} · ${ana.zScore.toFixed(2)}σ`}
                   emphasis={`${ana.currentDays} 天`}
                   emphasisColor={ana.level === "critical" ? "text-red-600" : ana.level === "high" ? "text-amber-600" : "text-slate-500"}
                   onToggle={() => toggleBlocker(blocker.id)}

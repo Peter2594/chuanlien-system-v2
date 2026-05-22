@@ -61,7 +61,7 @@ function resolveEventItems(
       .map(({ blocker, ana }) => ({
         title: blocker.title,
         meta: `${blocker.dept} · ${blocker.owner}`,
-        emphasis: `當週已卡 ${ana.currentDays} 天`,
+        emphasis: `當週已卡 ${ana.currentDays} 天 · P${ana.percentile ?? "-"} · ${ana.zScore.toFixed(2)}σ`,
       }));
   }
   if (/高風險卡點/.test(event)) {
@@ -71,7 +71,7 @@ function resolveEventItems(
       .map(({ blocker, ana }) => ({
         title: blocker.title,
         meta: `${blocker.dept} · ${blocker.owner}`,
-        emphasis: `當週已卡 ${ana.currentDays} 天`,
+        emphasis: `當週已卡 ${ana.currentDays} 天 · P${ana.percentile ?? "-"} · ${ana.zScore.toFixed(2)}σ`,
       }));
   }
   if (/決策逾期|筆決策/.test(event)) {
