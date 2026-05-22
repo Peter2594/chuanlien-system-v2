@@ -12,10 +12,10 @@ service cloud.firestore {
       return request.auth.token.email.lower();
     }
     function isAdmin() {
-      return isAuthed() && (
-        emailLower() == 'admin@test.com'
-        || emailLower().matches('^admin@.*')
-      );
+      return isAuthed() && emailLower() in [
+        'admin@test.com',
+        'peter.lin.sinden@gmail.com'
+      ];
     }
     function isManager() {
       return isAuthed() && emailLower().matches('^manager-.*');
