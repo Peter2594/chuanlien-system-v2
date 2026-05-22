@@ -78,6 +78,18 @@ export const stats = {
 };
 
 // ===== 員工負載 v2 (加權模型) =====
+function percentileRank(sortedValues: number[], value: number): number {
+  if (!sortedValues.length) return 0;
+  if (sortedValues.length === 1) return 50;
+
+  const less = sortedValues.filter((v) => v < value).length;
+  const equal = sortedValues.filter((v) => v === value).length;
+  if (equal === sortedValues.length) return 50;
+
+  const midpointRank = less + Math.max(0, equal - 1) / 2;
+  return Math.min(99, Math.max(0, Math.round((midpointRank / (sortedValues.length - 1)) * 100)));
+}
+
 export interface EmployeeLoad extends Employee {
   loadScore: number;
   percentile: number;
@@ -200,14 +212,19 @@ export function analyzeEmployeeLoad(
   const allScores = scores.map((s) => s.loadScore).sort((a, b) => a - b);
   const mean = stats.mean(allScores);
   const std = stats.std(allScores);
+  const totalScore = allScores.reduce((sum, value) => sum + value, 0);
+  const topScore = allScores[allScores.length - 1] || 0;
   return scores
     .map((s) => {
-      const rank = allScores.findIndex((v) => v >= s.loadScore);
-      const rawPercentile = allScores.length > 1 ? Math.round((rank / (allScores.length - 1)) * 100) : 50;
-      const percentile = Math.min(99, rawPercentile);
+      const percentile = percentileRank(allScores, s.loadScore);
       const zScore = std > 0 ? +((s.loadScore - mean) / std).toFixed(2) : 0;
-      const sigmaLevel: EmployeeLoad["sigmaLevel"] =
+      const topShare = totalScore > 0 ? s.loadScore / totalScore : 0;
+      let sigmaLevel: EmployeeLoad["sigmaLevel"] =
         zScore >= 3 ? "critical" : zScore >= 2 ? "warning" : "normal";
+      if (allScores.length < 10 && s.loadScore === topScore && s.loadScore > 0) {
+        if (topShare >= 0.8) sigmaLevel = "critical";
+        else if (topShare >= 0.6 && sigmaLevel === "normal") sigmaLevel = "warning";
+      }
       let level: EmployeeLoad["level"];
       if (sigmaLevel === "critical") level = "overload";
       else if (sigmaLevel === "warning") level = "high";
@@ -263,6 +280,7 @@ export function analyzeBlockerRecord(
       level: currentDays > 21 ? "high" : currentDays > 14 ? "medium" : "normal",
       levelLabel: currentDays > 21 ? "高風險" : currentDays > 14 ? "關注" : "正常",
       hasData: false, percentile: null, p75: 0, p90: 0, p95: 0,
+      meanDays: 0, stdDevDays: 0, zScore: 0, sigmaLevel: "normal" as const,
       categoryInfo: BLOCKER_CATEGORIES.find((c) => c.key === blocker.category) || BLOCKER_CATEGORIES[BLOCKER_CATEGORIES.length - 1],
       basisLabel: "SLA 提醒",
     };
@@ -272,8 +290,11 @@ export function analyzeBlockerRecord(
   const p75 = stats.percentile(sorted, 75);
   const p90 = stats.percentile(sorted, 90);
   const p95 = stats.percentile(sorted, 95);
-  const belowCount = sorted.filter((v) => v <= currentDays).length;
-  const percentile = Math.round((belowCount / sorted.length) * 100);
+  const meanDays = stats.mean(sorted);
+  const stdDevDays = stats.std(sorted);
+  const percentile = percentileRank(sorted, currentDays);
+  const zScore = stdDevDays > 0 ? +((currentDays - meanDays) / stdDevDays).toFixed(2) : 0;
+  const sigmaLevel = zScore >= 3 ? "critical" : zScore >= 2 ? "warning" : "normal";
 
   let level: "critical" | "high" | "medium" | "normal" = "normal";
   let levelLabel = "正常";
@@ -281,10 +302,13 @@ export function analyzeBlockerRecord(
   else if (currentDays >= p90) { level = "high"; levelLabel = "高風險"; }
   else if (currentDays >= p75) { level = "medium"; levelLabel = "關注"; }
 
+  if (sigmaLevel === "critical") { level = "critical"; levelLabel = "3σ立即處理"; }
+  else if (sigmaLevel === "warning") { level = "high"; levelLabel = "2σ警示"; }
+
   return {
     blocker, originalText: blocker.title, currentDays,
     level, levelLabel, hasData: true, percentile,
-    p75, p90, p95,
+    p75, p90, p95, meanDays, stdDevDays, zScore, sigmaLevel,
     categoryInfo: BLOCKER_CATEGORIES.find((c) => c.key === blocker.category) || BLOCKER_CATEGORIES[BLOCKER_CATEGORIES.length - 1],
     basisLabel: sameCat.length >= 5 ? "同類歷史" : "全公司歷史",
     sampleSize: days.length,

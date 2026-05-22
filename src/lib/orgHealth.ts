@@ -60,11 +60,16 @@ export function computeLoadBalanceScore(loads: LoadScoreLike[]): LoadBalanceBrea
   const variance = n > 1 ? scores.reduce((s, v) => s + (v - mean) ** 2, 0) / (n - 1) : 0;
   const stdDev = Math.sqrt(variance);
   const zScores = scores.map((v) => stdDev > 0 ? (v - mean) / stdDev : 0);
-  const twoSigmaCount = zScores.filter((z) => z >= 2 && z < 3).length;
-  const threeSigmaCount = zScores.filter((z) => z >= 3).length;
-  const overloadCount = twoSigmaCount + threeSigmaCount;
+  let twoSigmaCount = zScores.filter((z) => z >= 2 && z < 3).length;
+  let threeSigmaCount = zScores.filter((z) => z >= 3).length;
   const maxZScore = Math.max(...zScores, 0);
   const top1Share = scores[n - 1] / total;
+  if (n < 10 && threeSigmaCount === 0 && top1Share >= 0.8) {
+    threeSigmaCount = 1;
+  } else if (n < 10 && twoSigmaCount + threeSigmaCount === 0 && top1Share >= 0.6) {
+    twoSigmaCount = 1;
+  }
+  const overloadCount = twoSigmaCount + threeSigmaCount;
 
   const giniPenalty = Math.max(0, gini - 0.35) * 120;
   const overloadPenalty = twoSigmaCount * 8 + threeSigmaCount * 16;

@@ -106,7 +106,7 @@ export default function Dashboard({
       ...p95Blockers.slice(0, 2).map((b) => ({
         id: "b-" + (b.blocker?.id || Math.random()), type: "blocker" as const,
         name: b.blocker?.title || b.originalText || "未命名卡點",
-        reason: `${b.categoryInfo?.label || "卡點"} · 已卡 ${b.currentDays} 天 · P${b.percentile}`,
+        reason: `${b.categoryInfo?.label || "卡點"} · 已卡 ${b.currentDays} 天 · P${b.percentile} · ${b.zScore.toFixed(2)}σ`,
       })),
       ...overdueHandoffs.slice(0, 2).map((h) => ({
         id: "h-" + h.id, type: "handoff" as const, name: h.title,
@@ -331,11 +331,11 @@ export default function Dashboard({
                   "text-xs font-mono font-bold shrink-0",
                   (data.topBlocker.percentile || 0) >= 95 ? "text-red-500" : "text-amber-600"
                 )}>
-                  P{data.topBlocker.percentile}
+                  P{data.topBlocker.percentile} · {data.topBlocker.zScore.toFixed(2)}σ
                 </span>
               </div>
               <div className="text-[10px] text-slate-500 mt-0.5">
-                {data.topBlocker.categoryInfo?.label} · 已卡 {data.topBlocker.currentDays} 天
+                {data.topBlocker.categoryInfo?.label} · 已卡 {data.topBlocker.currentDays} 天 · std {data.topBlocker.stdDevDays.toFixed(1)}
               </div>
             </div>
           )}

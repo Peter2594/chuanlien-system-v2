@@ -43,6 +43,7 @@ export default function BlockerAnalyticsPage({ blockers, history }: Props) {
         ...cat,
         count: items.length,
         mean: stats.mean(days),
+        std: stats.std(days),
         p75: stats.percentile(days, 75),
         p90: stats.percentile(days, 90),
         p95: stats.percentile(days, 95),
@@ -178,7 +179,15 @@ export default function BlockerAnalyticsPage({ blockers, history }: Props) {
                             {a.hasData ? (
                               <>
                                 <span className="text-slate-300">·</span>
-                                <span>超過歷史 <strong className="text-slate-800">{a.percentile}%</strong></span>
+                                <span>
+                                  P<strong className="text-slate-800">{a.percentile}</strong>
+                                  <span className="mx-1 text-slate-300">/</span>
+                                  <strong className={cn(
+                                    a.sigmaLevel === "critical" ? "text-red-600"
+                                    : a.sigmaLevel === "warning" ? "text-amber-600"
+                                    : "text-slate-800",
+                                  )}>{a.zScore.toFixed(2)}σ</strong>
+                                </span>
                               </>
                             ) : (
                               <>
@@ -220,6 +229,10 @@ export default function BlockerAnalyticsPage({ blockers, history }: Props) {
                                 <StatMini
                                   label="同類一般 / 警戒"
                                   value={a.hasData ? `${a.p75.toFixed(0)} / ${a.p90.toFixed(0)} 天` : "尚無樣本"}
+                                />
+                                <StatMini
+                                  label="P / sigma"
+                                  value={a.hasData ? `P${a.percentile} / ${a.zScore.toFixed(2)}σ` : "-"}
                                 />
                               </div>
                               {a.hasData && (
@@ -317,8 +330,9 @@ export default function BlockerAnalyticsPage({ blockers, history }: Props) {
                 <h4 className="text-sm font-bold text-slate-900">{c.label}</h4>
                 <span className="ml-auto text-[11px] text-slate-400 font-medium">{c.count} 筆</span>
               </div>
-              <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="grid grid-cols-4 gap-2 text-center">
                 <Stat label="平均"     value={c.mean.toFixed(1)} unit="天" />
+                <Stat label="Std"      value={c.std.toFixed(1)}  unit="天" />
                 <Stat label="一般上限" value={c.p75.toFixed(0)}  unit="天" />
                 <Stat label="警戒線"   value={c.p90.toFixed(0)}  unit="天" />
               </div>

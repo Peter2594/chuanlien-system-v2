@@ -59,7 +59,7 @@ export function NotificationPanel({ decisions, handoffs, blockers, reports, depa
         icon: <FileWarning size={14} />,
         title: a.blocker?.title || "高風險卡點",
         desc: `${a.blocker?.dept} · ${a.categoryInfo?.label}`,
-        meta: `${a.levelLabel} · 已卡 ${a.currentDays} 天`,
+        meta: `${a.levelLabel} · 已卡 ${a.currentDays} 天 · P${a.percentile ?? "-"} · ${a.zScore.toFixed(2)}σ`,
         tab: "analytics",
       });
     });
