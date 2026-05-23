@@ -223,7 +223,7 @@ export function OrgHealthCard({
       .filter((l) => l.sigmaLevel === "warning" || l.sigmaLevel === "critical").length;
 
     return {
-      blockerHealth:      criticalBlockers > 0 ? `?? ${criticalBlockers} ???? 2?/3?` : "???????",
+      blockerHealth:      criticalBlockers > 0 ? `還有 ${criticalBlockers} 件卡點達 2σ/3σ` : "卡點都在控制中",
       decisionTimeliness: overdueDecisions  > 0 ? `還有 ${overdueDecisions} 件決策已逾期`    : "決策都按時完成",
       handoffSmoothness:  overdueHandoffs   > 0 ? `還有 ${overdueHandoffs} 件交接逾時待簽收` : "交接全部按時",
       loadBalance:        overloaded        > 0 ? `有 ${overloaded} 人負載過高`              : "負載分佈健康",
