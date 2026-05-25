@@ -7,7 +7,7 @@
  * 執行：npx tsx scripts/parameter_tuning_validation.ts
  */
 import { analyzeBlockerRecord, analyzeDeptNetwork, analyzeEmployeeLoad } from "../src/lib/algorithms";
-import { computeHealthSnapshot, computeLoadBalanceScore } from "../src/lib/orgHealth";
+import { computeHealthSnapshot, computeLoadBalanceScore, ORG_HEALTH_WEIGHTS } from "../src/lib/orgHealth";
 import { searchHistory } from "../src/lib/historySearch";
 import { NOW } from "../src/lib/dateUtils";
 import { SEED_DEPARTMENTS } from "../src/lib/constants";
@@ -100,13 +100,7 @@ function validateBlockerParameters() {
 
 function validateOrgHealthWeights() {
   console.log("\n=== 4) Org Health 5 維權重 ===");
-  const weights = {
-    blockerHealth: 0.26,
-    decisionTimeliness: 0.21,
-    handoffSmoothness: 0.18,
-    loadBalance: 0.21,
-    crossDept: 0.14,
-  };
+  const weights = ORG_HEALTH_WEIGHTS;
   const sum = Object.values(weights).reduce((s, v) => s + v, 0);
   line(near(sum, 1, 0.0001) ? "PASS" : "WARN", "權重總和", sum.toFixed(2), "滿分/零分邊界可維持 100/0");
 

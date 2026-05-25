@@ -14,7 +14,7 @@ import { FlaskConical, RotateCcw, TrendingUp, TrendingDown, Minus } from "lucide
 import { Card } from "../components/ui/Card";
 import { cn } from "../lib/utils";
 import { NOW } from "../lib/dateUtils";
-import { computeHealthSnapshot, computeLoadBalanceScore, healthLevel } from "../lib/orgHealth";
+import { computeHealthSnapshot, computeLoadBalanceScore, healthLevel, ORG_HEALTH_WEIGHTS } from "../lib/orgHealth";
 import { analyzeBlockerRecord, analyzeEmployeeLoad, isDecisionOverdueAt, daysOverdue } from "../lib/algorithms";
 import type { Report, Handoff, Decision, Blocker, Employee, Department, HistoryCase } from "../lib/types";
 
@@ -129,7 +129,7 @@ export default function WhatIfPage({
     if (!adjustedLoads.length) return projectedBase;
 
     const loadBalance = computeLoadBalanceScore(adjustedLoads).score;
-    const overall = +(projectedBase.overall + (loadBalance - projectedBase.loadBalance) * 0.21).toFixed(1);
+    const overall = +(projectedBase.overall + (loadBalance - projectedBase.loadBalance) * ORG_HEALTH_WEIGHTS.loadBalance).toFixed(1);
 
     return { ...projectedBase, loadBalance: +loadBalance.toFixed(1), overall };
   }, [deferredScenario, employees, reports, simulated, projectedBase]);

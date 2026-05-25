@@ -135,6 +135,21 @@ ORI = 0.35·HCC + 0.25·DL + 0.25·BT + 0.15·CDC
 - BT: Blocker Tail Risk (2σ/3σ 數量 + 平均分位)
 - CDC: Cross-Dept Communication (不對稱次數)
 
+
+### 5. Organization Health Weights
+
+The organization-health score now uses an arithmetic progression by management priority:
+
+| Rank | Dimension | Weight |
+| --- | --- | --- |
+| 1 | Decision timeliness | 0.12 |
+| 2 | Handoff smoothness | 0.16 |
+| 3 | Cross-department collaboration | 0.20 |
+| 4 | Blocker health | 0.24 |
+| 5 | Load balance | 0.28 |
+
+Each step adds 0.04 and the weights sum to 1.00, so the highest dimension is important without dominating the total score.
+
 ---
 
 ## 🔐 角色權限
