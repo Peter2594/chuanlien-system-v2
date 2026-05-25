@@ -25,6 +25,14 @@ export interface HealthSnapshot {
   events: string[];       // 該週發生的關鍵事件，用於 hover 提示
 }
 
+export const ORG_HEALTH_WEIGHTS = {
+  decisionTimeliness: 0.28,
+  handoffSmoothness: 0.24,
+  crossDept: 0.20,
+  blockerHealth: 0.16,
+  loadBalance: 0.12,
+} as const;
+
 const clamp = (v: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v));
 
 interface LoadScoreLike {
@@ -199,11 +207,11 @@ export function computeHealthSnapshot(
   }
 
   const overall = +(
-    blockerHealth     * 0.26
-    + decisionTimeliness * 0.21
-    + handoffSmoothness  * 0.18
-    + loadBalance        * 0.21
-    + crossDept          * 0.14
+    decisionTimeliness * ORG_HEALTH_WEIGHTS.decisionTimeliness
+    + handoffSmoothness * ORG_HEALTH_WEIGHTS.handoffSmoothness
+    + crossDept         * ORG_HEALTH_WEIGHTS.crossDept
+    + blockerHealth     * ORG_HEALTH_WEIGHTS.blockerHealth
+    + loadBalance       * ORG_HEALTH_WEIGHTS.loadBalance
   ).toFixed(1);
 
   return {

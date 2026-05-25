@@ -7,7 +7,7 @@
  * 執行：npx tsx scripts/parameter_tuning_validation.ts
  */
 import { analyzeBlockerRecord, analyzeDeptNetwork, analyzeEmployeeLoad } from "../src/lib/algorithms";
-import { computeHealthSnapshot, computeLoadBalanceScore } from "../src/lib/orgHealth";
+import { computeHealthSnapshot, computeLoadBalanceScore, ORG_HEALTH_WEIGHTS } from "../src/lib/orgHealth";
 import { searchHistory } from "../src/lib/historySearch";
 import { NOW } from "../src/lib/dateUtils";
 import { SEED_DEPARTMENTS } from "../src/lib/constants";
@@ -100,13 +100,7 @@ function validateBlockerParameters() {
 
 function validateOrgHealthWeights() {
   console.log("\n=== 4) Org Health 5 維權重 ===");
-  const weights = {
-    blockerHealth: 0.26,
-    decisionTimeliness: 0.21,
-    handoffSmoothness: 0.18,
-    loadBalance: 0.21,
-    crossDept: 0.14,
-  };
+  const weights = ORG_HEALTH_WEIGHTS;
   const sum = Object.values(weights).reduce((s, v) => s + v, 0);
   line(near(sum, 1, 0.0001) ? "PASS" : "WARN", "權重總和", sum.toFixed(2), "滿分/零分邊界可維持 100/0");
 
@@ -122,21 +116,21 @@ function validateOrgHealthWeights() {
   );
   line("PASS", "Seed 整體健康度", `${snapshot.overall}`, `卡點=${snapshot.blockerHealth}, 負載=${snapshot.loadBalance}, 協作=${snapshot.crossDept}`);
 
-  const messy = {
-    blockerHealth: 21,
-    decisionTimeliness: 60,
-    handoffSmoothness: 75,
-    loadBalance: 55,
-    crossDept: 85,
-  };
-  const equalAvg = Object.values(messy).reduce((s, v) => s + v, 0) / 5;
-  const weighted =
-    messy.blockerHealth * weights.blockerHealth +
-    messy.decisionTimeliness * weights.decisionTimeliness +
-    messy.handoffSmoothness * weights.handoffSmoothness +
-    messy.loadBalance * weights.loadBalance +
-    messy.crossDept * weights.crossDept;
-  line(weighted < equalAvg ? "PASS" : "WARN", "差異化權重效果", `平均=${equalAvg.toFixed(1)}, 加權=${weighted.toFixed(1)}`, "卡點差時不會被其他維度過度拉高");
+  const orderedWeights = [
+    weights.decisionTimeliness,
+    weights.handoffSmoothness,
+    weights.crossDept,
+    weights.blockerHealth,
+    weights.loadBalance,
+  ];
+  const isDescending = orderedWeights.every((v, i) => i === 0 || orderedWeights[i - 1] > v);
+  const steps = orderedWeights.slice(1).map((v, i) => +(orderedWeights[i] - v).toFixed(2));
+  const isArithmetic = steps.every((step) => near(step, 0.04, 0.0001));
+  const spread = +(Math.max(...orderedWeights) - Math.min(...orderedWeights)).toFixed(2);
+  line(isDescending && isArithmetic && spread === 0.16 ? "PASS" : "WARN",
+    "等差排序檢查",
+    `排序=${orderedWeights.join(" > ")}, step=${steps.join("/")}, spread=${spread}`,
+    "決策最高、負載最低，每階差 0.04，避免極端權重");
 }
 
 function validateLoadBalanceAndNetwork() {
