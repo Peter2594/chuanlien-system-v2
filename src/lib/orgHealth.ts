@@ -26,11 +26,11 @@ export interface HealthSnapshot {
 }
 
 export const ORG_HEALTH_WEIGHTS = {
-  decisionTimeliness: 0.12,
-  handoffSmoothness: 0.16,
+  decisionTimeliness: 0.28,
+  handoffSmoothness: 0.24,
   crossDept: 0.20,
-  blockerHealth: 0.24,
-  loadBalance: 0.28,
+  blockerHealth: 0.16,
+  loadBalance: 0.12,
 } as const;
 
 const clamp = (v: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v));

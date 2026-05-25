@@ -116,21 +116,21 @@ function validateOrgHealthWeights() {
   );
   line("PASS", "Seed 整體健康度", `${snapshot.overall}`, `卡點=${snapshot.blockerHealth}, 負載=${snapshot.loadBalance}, 協作=${snapshot.crossDept}`);
 
-  const messy = {
-    blockerHealth: 21,
-    decisionTimeliness: 60,
-    handoffSmoothness: 75,
-    loadBalance: 55,
-    crossDept: 85,
-  };
-  const equalAvg = Object.values(messy).reduce((s, v) => s + v, 0) / 5;
-  const weighted =
-    messy.blockerHealth * weights.blockerHealth +
-    messy.decisionTimeliness * weights.decisionTimeliness +
-    messy.handoffSmoothness * weights.handoffSmoothness +
-    messy.loadBalance * weights.loadBalance +
-    messy.crossDept * weights.crossDept;
-  line(weighted < equalAvg ? "PASS" : "WARN", "差異化權重效果", `平均=${equalAvg.toFixed(1)}, 加權=${weighted.toFixed(1)}`, "卡點差時不會被其他維度過度拉高");
+  const orderedWeights = [
+    weights.decisionTimeliness,
+    weights.handoffSmoothness,
+    weights.crossDept,
+    weights.blockerHealth,
+    weights.loadBalance,
+  ];
+  const isDescending = orderedWeights.every((v, i) => i === 0 || orderedWeights[i - 1] > v);
+  const steps = orderedWeights.slice(1).map((v, i) => +(orderedWeights[i] - v).toFixed(2));
+  const isArithmetic = steps.every((step) => near(step, 0.04, 0.0001));
+  const spread = +(Math.max(...orderedWeights) - Math.min(...orderedWeights)).toFixed(2);
+  line(isDescending && isArithmetic && spread === 0.16 ? "PASS" : "WARN",
+    "等差排序檢查",
+    `排序=${orderedWeights.join(" > ")}, step=${steps.join("/")}, spread=${spread}`,
+    "決策最高、負載最低，每階差 0.04，避免極端權重");
 }
 
 function validateLoadBalanceAndNetwork() {

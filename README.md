@@ -142,13 +142,13 @@ The organization-health score now uses an arithmetic progression by management p
 
 | Rank | Dimension | Weight |
 | --- | --- | --- |
-| 1 | Decision timeliness | 0.12 |
-| 2 | Handoff smoothness | 0.16 |
+| 1 | Decision timeliness | 0.28 |
+| 2 | Handoff smoothness | 0.24 |
 | 3 | Cross-department collaboration | 0.20 |
-| 4 | Blocker health | 0.24 |
-| 5 | Load balance | 0.28 |
+| 4 | Blocker health | 0.16 |
+| 5 | Load balance | 0.12 |
 
-Each step adds 0.04 and the weights sum to 1.00, so the highest dimension is important without dominating the total score.
+Each step subtracts 0.04 by rank and the weights sum to 1.00, so priority is clear without letting one dimension dominate the total score.
 
 ---
 
