@@ -244,9 +244,9 @@ export default function BlockerAnalyticsPage({ blockers, history }: Props) {
                                   : "bg-emerald-50 text-emerald-800",
                                 )}>
                                   <strong className="font-bold">處理建議：</strong>
-                                  {a.level === "critical" && "????????? 3 ????????????????? owner?"}
-                                  {a.level === "high"     && "????????? 2 ??????????????????????"}
-                                  {a.level === "medium"   && "???? P75 ?????????????"}
+                                  {a.level === "critical" && "已超過 3 個標準差，請立即協調負責人與主管介入處理。"}
+                                  {a.level === "high"     && "已超過 2 個標準差，建議列為紅標示警並排入本週追蹤。"}
+                                  {a.level === "medium"   && "已超過 P75，建議確認是否需要補件或跨部門協助。"}
                                   {a.level === "normal"   && "仍在正常處理時程內。"}
                                 </div>
                               )}
