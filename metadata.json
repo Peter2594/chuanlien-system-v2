@@ -1,6 +1,6 @@
 {
   "name": "串連系統 v2.0",
-  "description": "專為中小型投資顧問公司設計的管理決策支持系統 (MDSS)，整合任務追蹤、負載模型與風險分析。",
+  "description": "為串聯股份有限公司設計的管理決策支援系統，整合週報、案件交接、歷史搜尋、卡點分析與 What-if 決策模擬。",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }
