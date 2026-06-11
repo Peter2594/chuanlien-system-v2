@@ -205,7 +205,7 @@ def slide_agenda():
     cards = [
         ("01", "問題", ["管理層看不見「正在發生什麼」", "情緒判斷 vs 數據事實"]),
         ("02", "系統", ["三大模組：負載 / 健康度 / 決策", "25+ 演算法支撐"]),
-        ("03", "亮點", ["反推校準方法論", "Cohort Adjustment", "What-if 模擬器"]),
+        ("03", "亮點", ["可審查的指標方法", "跨模組風險追蹤", "What-if 模擬器"]),
     ]
     card_w = Inches(3.6)
     card_h = Inches(4.4)
@@ -244,7 +244,7 @@ def slide_context():
     add_text(s, Inches(0.8), Inches(0.6), Inches(10), Inches(0.8),
              "合作對象與動機", size=44, bold=True, color=WHITE)
     add_text(s, Inches(0.8), Inches(1.45), Inches(11), Inches(0.6),
-             "與「串聯」中型投資公司實際合作 — 痛點來自 5 位管理層問卷",
+             "與「串聯」投資公司實際合作 — 痛點來自 6 段訪談與 24 份問卷",
              size=17, color=INK_LITE)
 
     # 左：合作對象
@@ -253,14 +253,14 @@ def slide_context():
     add_text(s, Inches(0.9), Inches(2.5), Inches(5.4), Inches(0.4),
              "合作公司 ──「串聯」", size=13, bold=True, color=ACCENT)
     add_text(s, Inches(0.9), Inches(3.0), Inches(5.4), Inches(3.6),
-             ("• 中型投資公司　|　約 17 員工　|　3 業務部門\n\n"
+             ("• 投資公司　|　管理層與 3 個主要業務部門\n\n"
               "• 組織架構\n"
               "    ◦ 管理層：董事會 / 投資委員會 / 營運會議\n"
-              "    ◦ 投資研究部　7 人\n"
-              "    ◦ 業務開發部　6 人\n"
-              "    ◦ 資產管理部　4 人\n\n"
+              "    ◦ 投資研究部\n"
+              "    ◦ 業務開發部\n"
+              "    ◦ 資產管理部\n\n"
               "• 經營特性\n"
-              "    ◦ 決策密度高（每週 5-10 件）\n"
+              "    ◦ 決策與案件資訊需要跨部門流動\n"
               "    ◦ 跨部門協作頻繁\n"
               "    ◦ 案件週期長（盡調 → 投決 → 退場）"),
              size=12, color=DEEP, line_spacing=1.5)
@@ -272,9 +272,9 @@ def slide_context():
              "合作方式與動機", size=13, bold=True, color=ACCENT)
     add_text(s, Inches(7.1), Inches(3.0), Inches(5.3), Inches(3.6),
              ("• 合作方式\n"
-              "    ◦ 訪談對象：5 位管理層\n"
-              "    ◦ 形式：簡易結構化問卷\n"
-              "    ◦ 範圍：聚焦痛點蒐集\n\n"
+              "    ◦ 訪談：管理層及三個業務部門，共 6 段\n"
+              "    ◦ 問卷：24 份跨部門協作回覆\n"
+              "    ◦ 範圍：流程現況與痛點蒐集\n\n"
               "• 為什麼是「串聯」\n"
               "    投資產業決策密度高、跨部門協作\n"
               "    頻繁，「主管憑直覺管理」的損失\n"
@@ -615,10 +615,10 @@ def slide_impact():
              "Google OKR 評分要求「相對 cohort」，\n"
              "因為絕對分數沒意義 —\n"
              "經濟好時誰做都好。"),
-            ("12 決策 × 3 主管驗證",
-             "舊版：3/3 主管都負分（不合理）\n"
-             "新版：2 好 1 差，\n"
-             "跟管理層事後排序一致。"),
+            ("示範資料檢查",
+             "以不同決策情境確認分數方向\n"
+             "與公式設定一致；正式導入後\n"
+             "仍需用實際結果重新校準。"),
         ],
         page=8,
         algo="同期校準 (DiD) + 線性回歸",
@@ -663,7 +663,7 @@ def slide_calibration():
         ("⑤", "敏感度確認",
          "確認穩定性",
          "±20% 擾動 × 500 次\n看 Top-N 變不變",
-         "Top-3 穩定 93.4%\nSpearman 0.995"),
+         "Top-3 穩定 100.0%\nSpearman 0.994"),
     ]
     card_w = Inches(2.35)
     card_h = Inches(4.05)
@@ -715,8 +715,8 @@ def slide_calibration():
         ("15 個",   "人工權重"),
         ("5 階段",  "可審查依據"),
         ("500 次",  "敏感度擾動"),
-        ("93.4%",   "Top-3 穩定"),
-        ("0.995",   "Spearman ρ"),
+        ("100.0%",  "Top-3 穩定"),
+        ("0.994",   "Spearman ρ"),
     ]
     sw = Inches(2.4)
     for i, (val, label) in enumerate(summary):
@@ -1056,7 +1056,7 @@ def slide_competitive():
              size=10, color=INK_LITE)
     # 結論
     add_text(s, Inches(5.5), legend_y, Inches(7), Inches(0.3),
-             "差異化：決策閉環 + 跨部門卡點 + 反推校準三項，市面無同類產品。",
+             "差異化：將決策、交接、卡點與歷史經驗整合為可追蹤的跨模組流程。",
              size=11, bold=True, color=INK_DARK, align=PP_ALIGN.RIGHT)
 
     add_footer(s, 13)
